@@ -187,7 +187,7 @@
                         <StackPanel>
                             <CheckBox Content="低电量提醒" IsChecked="{Binding LowBatteryNotifications}" />
                             <TextBlock Margin="27,4,0,0" FontSize="10" Foreground="#77726B"
-                                       Text="获得可信电量数据后生效" />
+                                       Text="电量来自 Windows HFP；提醒能力将在后续阶段启用" />
                             <CheckBox Margin="0,15,0,0" Content="免提模式高级选项" IsChecked="{Binding HandsFreeAdvanced}" />
                             <CheckBox Margin="0,15,0,0" Content="启用实验协议入口" IsChecked="{Binding ExperimentalProtocol}" />
                         </StackPanel>
@@ -196,7 +196,7 @@
                     <Border Margin="0,14,0,0" Padding="14,12" Background="#2A1D17" BorderBrush="#459C6044"
                             BorderThickness="1" CornerRadius="13">
                         <TextBlock FontSize="10" Foreground="#D39A7E" TextWrapping="Wrap"
-                                   Text="电量、充电、Bass 和灯效在完成读取、写入、回读验证前保持不可用。" />
+                                   Text="电量已使用 Windows HFP 只读数据；充电、Bass 和灯效在完成验证前保持不可用。" />
                     </Border>
                 </StackPanel>
             </ScrollViewer>

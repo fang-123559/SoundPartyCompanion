@@ -16,6 +16,7 @@
 | 当前设备名 | `Xiaomi蓝牙音箱Pro` |
 | 已发现协议 | A2DP、AVRCP、HFP、GATT `1801`、私有 `AE00/BF00` |
 | 未发现协议 | 标准电量服务 `180F` |
+| 已验证电量源 | Windows HFP PnP 设备属性；实机读取 `100%` |
 
 当前设备地址只用于本机测试，不写入源码、文档、发布包或明文日志。
 
@@ -105,6 +106,7 @@ record SpeakerSnapshot(
 |---|---|
 | `ISpeakerDiscovery` | 查找、选择和保存目标设备 |
 | `IConnectionMonitor` | 监听蓝牙适配器及设备在线状态 |
+| `ISpeakerBatteryReader` | 从当前存在的 Windows HFP PnP 节点读取电量 |
 | `IAudioEndpointController` | 读取/设置音量、静音和默认输出 |
 | `IMediaSessionController` | 读取活动媒体并执行媒体控制 |
 | `ISpeakerProtocol` | 读取私有状态并执行白名单命令 |
@@ -227,6 +229,8 @@ Windows GATT 客户端实现遵循 [Microsoft GATT 指南](https://learn.microso
 
 ## 7. 电量与充电规则
 
+- 当前电量源为 Windows HFP PnP 字节属性 `{104EA319-6EE2-4701-BD47-8DDBF425BBE5} 2`。
+- 只枚举 `DIGCF_PRESENT` 节点，禁止把 Windows 保留的离线历史节点当作当前电量。
 - 成功连接后立即请求一次电量，之后最多每 60 秒刷新。
 - 收到设备主动通知时立即更新。
 - 在线超过 2 分钟没有新值时，将电量标记为 stale。
@@ -235,6 +239,7 @@ Windows GATT 客户端实现遵循 [Microsoft GATT 指南](https://learn.microso
 - 未获得可靠能力时显示 `--` 和“设备未提供电量数据”。
 - 不根据播放时间、音量、电压趋势或历史耗电速度估算电量。
 - 只有明确充电标志才能显示闪电图标。
+- HFP 电量属性未提供可靠充电标志，因此当前充电状态保持 `Unknown`。
 - 默认在下降到 20% 和 10% 时各提醒一次；同一放电周期不重复，充电时静默，可在设置关闭。
 
 ## 8. USB-C 场景
@@ -399,7 +404,7 @@ Windows GATT 客户端实现遵循 [Microsoft GATT 指南](https://learn.microso
 
 ### 12.3 私有协议门槛
 
-- 电量与手机显示在至少五个不同区间逐次对照。
+- 如后续将私有协议电量作为 Windows HFP 的替代源，必须与系统显示在至少五个不同区间逐次对照。
 - 充电标志能够直接随插拔变化。
 - Bass 和灯效各连续切换 20 次，无错控或音频中断。
 - 任一能力失败时隐藏对应控件并保留诊断原因。
@@ -416,7 +421,8 @@ Windows GATT 客户端实现遵循 [Microsoft GATT 指南](https://learn.microso
 ## 13. 已知边界
 
 - ⚠️ 产品按 `MDZ-39-DB / Xiaomi Sound Party` 设计，但最终以机身铭牌和实际服务为准。
-- ⚠️ 电量、充电、Bass 和灯效取决于私有协议验证结果。
+- ✅ 电量已通过 Windows HFP PnP 属性读取，不依赖私有协议。
+- ⚠️ 充电、Bass 和灯效仍取决于明确字段或私有协议验证结果。
 - ✅ USB-C 不作为数据通道。
 - 第一版只管理一台音箱，不支持 TWS、Party Connect 或其他型号。
 - 本产品不隶属于、也不代表小米官方。

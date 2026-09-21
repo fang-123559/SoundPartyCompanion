@@ -8,6 +8,7 @@ internal static class NativeBluetooth
     internal const int BluetoothMaxNameSize = 248;
     internal const uint DeviceInfoAllClasses = 0x00000004;
     internal const uint DeviceInfoPresent = 0x00000002;
+    internal const int NoMoreItems = 259;
     internal static readonly nint InvalidHandleValue = new(-1);
 
     [DllImport("BluetoothApis.dll", SetLastError = true)]
@@ -48,7 +49,7 @@ internal static class NativeBluetooth
     [DllImport("setupapi.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     internal static extern nint SetupDiGetClassDevs(
         nint classGuid,
-        string enumerator,
+        string? enumerator,
         nint parentWindow,
         uint flags);
 
@@ -67,6 +68,21 @@ internal static class NativeBluetooth
         StringBuilder deviceInstanceId,
         int deviceInstanceIdSize,
         out int requiredSize);
+
+    [DllImport(
+        "setupapi.dll",
+        EntryPoint = "SetupDiGetDevicePropertyW",
+        SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetupDiGetDeviceProperty(
+        nint deviceInfoSet,
+        ref SetupDeviceInfoData deviceInfoData,
+        ref DevicePropertyKey propertyKey,
+        out uint propertyType,
+        byte[] propertyBuffer,
+        uint propertyBufferSize,
+        out uint requiredSize,
+        uint flags);
 
     [DllImport("setupapi.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -150,4 +166,11 @@ internal struct SetupDeviceInfoData
     internal Guid ClassGuid;
     internal uint DeviceInstance;
     internal nint Reserved;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct DevicePropertyKey
+{
+    internal Guid FormatId;
+    internal uint PropertyId;
 }

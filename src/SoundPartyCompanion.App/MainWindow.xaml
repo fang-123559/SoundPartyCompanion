@@ -570,7 +570,8 @@
                     <TextBlock VerticalAlignment="Center"
                                Foreground="{StaticResource TextSecondaryBrush}"
                                FontSize="11"
-                               Text="已连接" />
+                               Text="{Binding BatteryText}"
+                               ToolTip="{Binding BatteryDetailText}" />
                 </StackPanel>
             </Grid>
 
@@ -681,7 +682,8 @@
                             <TextBlock VerticalAlignment="Center"
                                        Foreground="{StaticResource TextSecondaryBrush}"
                                        FontSize="11"
-                                       Text="已连接" />
+                                       Text="{Binding BatteryText}"
+                                       ToolTip="{Binding BatteryDetailText}" />
                         </StackPanel>
                     </Grid>
 

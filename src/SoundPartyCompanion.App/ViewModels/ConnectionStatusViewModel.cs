@@ -36,11 +36,15 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
     private string _playPauseCommandText = "播放";
     private string _playPauseGlyph = "▶";
     private string _lastCheckedText = string.Empty;
+    private string _batteryText = "--";
+    private string _batteryDetailText = "设备未提供电量数据";
     private double _volumePercent;
+    private double _batteryPercent;
     private bool _isMuted;
     private bool _isCurrentOutput;
     private bool _isConnected;
     private bool _hasMediaSession;
+    private bool _hasBattery;
     private bool _disposed;
 
     public ConnectionStatusViewModel(
@@ -99,8 +103,8 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
     public string PlayPauseGlyph { get => _playPauseGlyph; private set => SetField(ref _playPauseGlyph, value); }
     public string ToggleExpandedCommandText => WidgetMode == WidgetDisplayMode.Expanded ? "收起" : "展开";
     public string LastCheckedText { get => _lastCheckedText; private set => SetField(ref _lastCheckedText, value); }
-    public string BatteryText => "不可用";
-    public string BatteryDetailText => "未发现标准电量服务 180F · 私有协议待验证";
+    public string BatteryText { get => _batteryText; private set => SetField(ref _batteryText, value); }
+    public string BatteryDetailText { get => _batteryDetailText; private set => SetField(ref _batteryDetailText, value); }
     public string OptionalFeaturesText => "Bass 与灯效等待协议验证";
     public bool IsConnected { get => _isConnected; private set => SetField(ref _isConnected, value); }
     public bool IsMuted { get => _isMuted; private set => SetField(ref _isMuted, value); }
@@ -115,6 +119,8 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         }
     }
     public double VolumePercent { get => _volumePercent; private set => SetField(ref _volumePercent, value); }
+    public double BatteryPercent { get => _batteryPercent; private set => SetField(ref _batteryPercent, value); }
+    public bool HasBattery { get => _hasBattery; private set => SetField(ref _hasBattery, value); }
 
     public WidgetDisplayMode WidgetMode
     {
@@ -337,6 +343,7 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         if (!snapshot.IsConnected) _expandedRequested = false;
         if (snapshot.IsConnected || wasConnected) _offlineDetailsRequested = false;
         LastCheckedText = $"{snapshot.ObservedAt.ToLocalTime():HH:mm:ss} 更新";
+        ApplyBattery(snapshot.Battery, snapshot.IsConnected);
         (StatusText, DetailText) = snapshot.State switch
         {
             SpeakerConnectionState.BluetoothUnavailable => ("电脑蓝牙已关闭", "打开蓝牙后，组件会自动重新检测"),
@@ -355,6 +362,28 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         }
         NotifyCommandsCanExecuteChanged();
         _ = RefreshRuntimeSafelyAsync(_runtimeCancellation.Token);
+    }
+
+    private void ApplyBattery(SpeakerBatterySnapshot battery, bool isConnected)
+    {
+        HasBattery = battery.Percent.HasValue;
+        BatteryPercent = battery.Percent ?? 0;
+        BatteryText = battery.Percent is int percent ? $"{percent}%" : "--";
+
+        if (battery.ObservedAt is not DateTimeOffset observedAt)
+        {
+            BatteryDetailText = isConnected
+                ? "设备未提供电量数据"
+                : "音箱离线 · 无可用电量缓存";
+            return;
+        }
+
+        var localTime = observedAt.ToLocalTime().ToString("HH:mm");
+        BatteryDetailText = battery.IsStale
+            ? isConnected
+                ? $"Windows HFP · {localTime} 采集 · 已过期"
+                : $"上次电量 · {localTime} 采集 · 音箱已离线"
+            : $"Windows HFP · {localTime} 更新";
     }
 
     private void UpdateWidgetMode() => WidgetMode = WidgetStateRules.Resolve(

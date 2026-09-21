@@ -43,6 +43,48 @@ public sealed class ConnectionStatusViewModelTests
         Assert.Equal("Artist", viewModel.TrackArtist);
     }
 
+    [Fact]
+    public void ConnectedBatteryIsShownWithWindowsSource()
+    {
+        var now = DateTimeOffset.Now;
+        var snapshot = Snapshot(SpeakerConnectionState.Connected, now) with
+        {
+            Battery = new SpeakerBatterySnapshot(
+                100,
+                SpeakerChargingState.Unknown,
+                now,
+                IsStale: false)
+        };
+        var monitor = new FakeConnectionMonitor(snapshot);
+
+        using var viewModel = CreateViewModel(monitor, SpeakerMediaSnapshot.Empty(now));
+
+        Assert.True(viewModel.HasBattery);
+        Assert.Equal(100, viewModel.BatteryPercent);
+        Assert.Equal("100%", viewModel.BatteryText);
+        Assert.Contains("Windows HFP", viewModel.BatteryDetailText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OfflineBatteryCacheIsMarkedAsStale()
+    {
+        var now = DateTimeOffset.Now;
+        var snapshot = Snapshot(SpeakerConnectionState.PairedOffline, now) with
+        {
+            Battery = new SpeakerBatterySnapshot(
+                50,
+                SpeakerChargingState.Unknown,
+                now.AddMinutes(-1),
+                IsStale: true)
+        };
+        var monitor = new FakeConnectionMonitor(snapshot);
+
+        using var viewModel = CreateViewModel(monitor, SpeakerMediaSnapshot.Empty(now));
+
+        Assert.Equal("50%", viewModel.BatteryText);
+        Assert.Contains("音箱已离线", viewModel.BatteryDetailText, StringComparison.Ordinal);
+    }
+
     private static ConnectionStatusViewModel CreateViewModel(
         IConnectionMonitor monitor,
         SpeakerMediaSnapshot media) =>

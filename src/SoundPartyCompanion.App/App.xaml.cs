@@ -50,6 +50,7 @@ public partial class App : System.Windows.Application
         _logger.Write(AppLogLevel.Information, "Application starting.");
 
         var discovery = new WindowsBluetoothDiscovery(_logger);
+        var batteryReader = new WindowsSpeakerBatteryReader();
         var audioController = new WindowsAudioEndpointController(_logger);
         var mediaController = new WindowsMediaSessionController(_logger);
         var outputProbe = new WindowsDefaultOutputProbe(audioController, _logger);
@@ -68,7 +69,8 @@ public partial class App : System.Windows.Application
             discovery,
             outputProbe,
             TimeSpan.FromSeconds(3),
-            _logger);
+            _logger,
+            batteryReader);
         _connectionViewModel = new ConnectionStatusViewModel(
             _connectionMonitor,
             audioController,

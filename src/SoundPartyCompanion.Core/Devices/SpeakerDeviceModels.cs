@@ -28,6 +28,8 @@ public sealed record SpeakerConnectionSnapshot(
     string? DisplayName,
     DateTimeOffset ObservedAt)
 {
+    public SpeakerBatterySnapshot Battery { get; init; } = SpeakerBatterySnapshot.Unavailable;
+
     public bool IsConnected =>
         State is SpeakerConnectionState.Connected or SpeakerConnectionState.ConnectedAsOutput;
 
