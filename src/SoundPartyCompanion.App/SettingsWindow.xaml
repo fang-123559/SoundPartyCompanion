@@ -1,0 +1,215 @@
+<Window x:Class="SoundPartyCompanion.App.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Sound Party Companion 设置"
+        Width="440"
+        Height="620"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Foreground="#F3EFE9"
+        FontFamily="Segoe UI Variable, Segoe UI, Microsoft YaHei UI"
+        Closed="HandleWindowClosed">
+    <Window.Resources>
+        <Style x:Key="SettingsPageButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="Transparent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SettingsThumbStyle" TargetType="Thumb">
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="Width" Value="6" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="ThumbSurface" Margin="0,1" Background="#706C6862" CornerRadius="3" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbSurface" Property="Background" Value="#AAA49B" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="ThumbSurface" Property="Background" Value="#C79C6044" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SettingsScrollBarStyle" TargetType="ScrollBar">
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Margin="0,5,4,5" Background="Transparent">
+                            <Border Width="2" HorizontalAlignment="Center" Background="#252321" CornerRadius="1" Opacity="0.65" />
+                            <Track x:Name="PART_Track"
+                                   Orientation="Vertical"
+                                   IsDirectionReversed="True"
+                                   Minimum="{TemplateBinding Minimum}"
+                                   Maximum="{TemplateBinding Maximum}"
+                                   Value="{TemplateBinding Value}"
+                                   ViewportSize="{TemplateBinding ViewportSize}">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource SettingsPageButtonStyle}"
+                                                  Command="{x:Static ScrollBar.PageUpCommand}"
+                                                  CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource SettingsThumbStyle}" />
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource SettingsPageButtonStyle}"
+                                                  Command="{x:Static ScrollBar.PageDownCommand}"
+                                                  CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SettingsScrollViewerStyle" TargetType="ScrollViewer">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                            </Grid.ColumnDefinitions>
+                            <ScrollContentPresenter x:Name="PART_ScrollContentPresenter"
+                                                    Grid.Column="0"
+                                                    Margin="{TemplateBinding Padding}"
+                                                    Content="{TemplateBinding Content}"
+                                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                    CanContentScroll="{TemplateBinding CanContentScroll}"
+                                                    SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                            <ScrollBar x:Name="PART_VerticalScrollBar"
+                                       Grid.Column="1"
+                                       Width="10"
+                                       Style="{StaticResource SettingsScrollBarStyle}"
+                                       Orientation="Vertical"
+                                       Maximum="{TemplateBinding ScrollableHeight}"
+                                       ViewportSize="{TemplateBinding ViewportHeight}"
+                                       Value="{TemplateBinding VerticalOffset}"
+                                       Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Margin="14" Background="#171716" BorderBrush="#30F3EFE9" BorderThickness="1" CornerRadius="24">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="9" Opacity="0.36" Color="#000000" />
+        </Border.Effect>
+        <Grid ClipToBounds="True">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="72" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="70" />
+            </Grid.RowDefinitions>
+
+            <Grid Margin="26,0,18,0" MouseLeftButtonDown="HandleWindowDrag">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Text="Sound Party Companion" />
+                    <TextBlock Margin="0,3,0,0" FontSize="10" Foreground="#817B74" Text="本地设置 · 不连接云端" />
+                </StackPanel>
+                <Button Grid.Column="1" Width="34" Height="34" Padding="0" Background="#242321"
+                        Click="HandleCloseClick" Content="×" FontSize="18" ToolTip="关闭设置" />
+            </Grid>
+
+            <ScrollViewer x:Name="SettingsScrollViewer"
+                          Grid.Row="1"
+                          Margin="0,0,8,0"
+                          Style="{StaticResource SettingsScrollViewerStyle}"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          CanContentScroll="False"
+                          IsDeferredScrollingEnabled="False"
+                          PanningMode="VerticalOnly"
+                          PreviewMouseWheel="HandleSettingsMouseWheel"
+                          PreviewMouseLeftButtonDown="HandleScrollPointerDown"
+                          ScrollChanged="HandleSettingsScrollChanged">
+                <StackPanel Margin="26,0,14,18">
+                    <Border Height="2" Margin="0,0,0,22" Background="#9C6044" CornerRadius="1" Opacity="0.7" />
+
+                    <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#9C6044" Text="常规" />
+                    <Border Margin="0,10,0,0" Padding="16,15" Background="#211F1D" CornerRadius="15">
+                        <StackPanel>
+                            <CheckBox Content="登录 Windows 后启动" IsChecked="{Binding StartWithWindows}" />
+                            <CheckBox Margin="0,15,0,0" Content="音箱离线时自动收为图标" IsChecked="{Binding AutoCollapseOffline}" />
+                            <CheckBox Margin="0,15,0,0" Content="组件始终置顶" IsChecked="{Binding AlwaysOnTop}" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Margin="0,22,0,0" FontSize="11" FontWeight="SemiBold" Foreground="#9C6044" Text="外观与位置" />
+                    <Border Margin="0,10,0,0" Padding="16,15" Background="#211F1D" CornerRadius="15">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock FontSize="13" Text="组件不透明度" />
+                                <TextBlock Grid.Column="1" FontSize="12" Foreground="#AAA49B"
+                                           Text="{Binding WindowOpacity, StringFormat={}{0:P0}}" />
+                            </Grid>
+                            <Slider Margin="0,10,0,0" Minimum="0.65" Maximum="1" SmallChange="0.05" LargeChange="0.1"
+                                    Value="{Binding WindowOpacity, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Margin="0,12,0,0" HorizontalAlignment="Left" Padding="12,7"
+                                    Command="{Binding ResetPositionCommand}" Content="重置组件位置" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Margin="0,22,0,0" FontSize="11" FontWeight="SemiBold" Foreground="#9C6044" Text="提醒与实验能力" />
+                    <Border Margin="0,10,0,0" Padding="16,15" Background="#211F1D" CornerRadius="15">
+                        <StackPanel>
+                            <CheckBox Content="低电量提醒" IsChecked="{Binding LowBatteryNotifications}" />
+                            <TextBlock Margin="27,4,0,0" FontSize="10" Foreground="#77726B"
+                                       Text="获得可信电量数据后生效" />
+                            <CheckBox Margin="0,15,0,0" Content="免提模式高级选项" IsChecked="{Binding HandsFreeAdvanced}" />
+                            <CheckBox Margin="0,15,0,0" Content="启用实验协议入口" IsChecked="{Binding ExperimentalProtocol}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Margin="0,14,0,0" Padding="14,12" Background="#2A1D17" BorderBrush="#459C6044"
+                            BorderThickness="1" CornerRadius="13">
+                        <TextBlock FontSize="10" Foreground="#D39A7E" TextWrapping="Wrap"
+                                   Text="电量、充电、Bass 和灯效在完成读取、写入、回读验证前保持不可用。" />
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Border Grid.Row="2" BorderBrush="#20F3EFE9" BorderThickness="0,1,0,0" Background="#F2171716">
+                <Grid Margin="26,0,26,0">
+                    <TextBlock VerticalAlignment="Center" FontSize="10" Foreground="#746F68"
+                               Text="设置会自动保存在本机" />
+                    <Button Width="94" Height="36" HorizontalAlignment="Right" Background="#F45B16"
+                            BorderBrush="#F45B16" Foreground="#211008" FontWeight="SemiBold"
+                            Click="HandleCloseClick" Content="完成" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

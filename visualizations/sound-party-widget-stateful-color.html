@@ -1,0 +1,729 @@
+<div id="sound-party-widget-stateful-color">
+  <style>
+    #sound-party-widget-stateful-color {
+      --sc-orange: #9c6044;
+      --sc-orange-ink: #21130d;
+      --sc-black: #171716;
+      --sc-raised: #232220;
+      --sc-soft: #1d1c1a;
+      --sc-text: #f3efe9;
+      --sc-muted: #aaa49b;
+      --sc-faint: #746f68;
+      --sc-line: rgba(243, 239, 233, 0.09);
+      --sc-radius: 24px;
+      width: 100%;
+      color: var(--sc-text);
+      font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    }
+
+    #sound-party-widget-stateful-color .sc-layout {
+      display: grid;
+      gap: 14px;
+      width: 100%;
+    }
+
+    #sound-party-widget-stateful-color .sc-tabs {
+      justify-self: center;
+    }
+
+    #sound-party-widget-stateful-color .sc-desktop {
+      position: relative;
+      min-height: 580px;
+      overflow: hidden;
+      border-radius: 20px;
+      background:
+        radial-gradient(circle at 82% 14%, rgba(255, 255, 255, 0.52), transparent 25%),
+        linear-gradient(145deg, #ddd8d1 0%, #c9c2b9 62%, #bcb4aa 100%);
+      box-shadow: inset 0 0 0 1px rgba(47, 40, 34, 0.08);
+    }
+
+    #sound-party-widget-stateful-color .sc-context {
+      position: absolute;
+      top: 32px;
+      left: 30px;
+      max-width: 310px;
+      color: rgba(38, 33, 29, 0.62);
+    }
+
+    #sound-party-widget-stateful-color .sc-context strong {
+      display: block;
+      margin-bottom: 7px;
+      color: rgba(29, 25, 22, 0.9);
+      font-weight: 500;
+    }
+
+    #sound-party-widget-stateful-color .sc-placement {
+      position: absolute;
+      bottom: 27px;
+      left: 30px;
+      color: rgba(38, 33, 29, 0.46);
+      letter-spacing: 0.02em;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget {
+      position: absolute;
+      top: 34px;
+      right: 34px;
+      width: min(350px, calc(100% - 28px));
+      min-height: 125px;
+      overflow: hidden;
+      border: 1px solid var(--sc-line);
+      border-radius: var(--sc-radius);
+      background: var(--sc-black);
+      box-shadow: 0 22px 58px rgba(35, 27, 21, 0.28), 0 3px 12px rgba(35, 27, 21, 0.12);
+      transition: width 200ms ease, min-height 200ms ease, border-radius 200ms ease;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget::before {
+      content: "";
+      position: absolute;
+      z-index: 0;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.18;
+      background-image:
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.026) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 4px);
+      transition: opacity 200ms ease;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget[data-state="expanded"] {
+      width: min(388px, calc(100% - 28px));
+      min-height: 432px;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget[data-state="expanded"]::before {
+      opacity: 0.52;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget.sc-no-texture::before {
+      opacity: 0;
+    }
+
+    #sound-party-widget-stateful-color .sc-compact-mark {
+      position: absolute;
+      z-index: 4;
+      top: 22px;
+      right: 0;
+      width: 3px;
+      height: 36px;
+      border-radius: 3px 0 0 3px;
+      background: color-mix(in srgb, var(--sc-orange) 78%, #7f7167);
+      transition: opacity 140ms ease;
+    }
+
+    #sound-party-widget-stateful-color .sc-rail {
+      position: absolute;
+      z-index: 3;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 17px 0 16px;
+      background: var(--sc-orange);
+      color: var(--sc-orange-ink);
+      opacity: 0;
+      transform: translateX(100%);
+      transition: opacity 180ms ease, transform 200ms ease;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget[data-state="expanded"] .sc-rail {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    #sound-party-widget-stateful-color .sc-widget[data-state="expanded"] .sc-compact-mark {
+      opacity: 0;
+    }
+
+    #sound-party-widget-stateful-color .sc-rail-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    #sound-party-widget-stateful-color .sc-rail-button,
+    #sound-party-widget-stateful-color .sc-media-button,
+    #sound-party-widget-stateful-color .sc-output-button,
+    #sound-party-widget-stateful-color .sc-quiet-button {
+      border: 0;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    #sound-party-widget-stateful-color .sc-rail-button {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: inherit;
+    }
+
+    #sound-party-widget-stateful-color .sc-rail-button:hover {
+      background: rgba(30, 16, 10, 0.1);
+    }
+
+    #sound-party-widget-stateful-color .sc-rail-signal {
+      display: grid;
+      gap: 4px;
+      place-items: center;
+    }
+
+    #sound-party-widget-stateful-color .sc-rail-signal span {
+      display: block;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.55;
+    }
+
+    #sound-party-widget-stateful-color .sc-main {
+      position: relative;
+      z-index: 1;
+      padding: 19px 21px 18px;
+      transition: padding 200ms ease;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget[data-state="expanded"] .sc-main {
+      padding: 21px 69px 21px 21px;
+    }
+
+    #sound-party-widget-stateful-color .sc-header {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #sound-party-widget-stateful-color .sc-device-icon {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      background: var(--sc-raised);
+      color: var(--sc-text);
+    }
+
+    #sound-party-widget-stateful-color .sc-device-copy {
+      min-width: 0;
+    }
+
+    #sound-party-widget-stateful-color .sc-device-name {
+      overflow: hidden;
+      color: var(--sc-text);
+      font-weight: 500;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #sound-party-widget-stateful-color .sc-device-detail {
+      margin-top: 3px;
+      color: var(--sc-muted);
+    }
+
+    #sound-party-widget-stateful-color .sc-connected {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--sc-muted);
+      white-space: nowrap;
+    }
+
+    #sound-party-widget-stateful-color .sc-connected-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #83a488;
+      box-shadow: 0 0 0 3px rgba(131, 164, 136, 0.11);
+    }
+
+    #sound-party-widget-stateful-color .sc-summary {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: end;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    #sound-party-widget-stateful-color .sc-battery {
+      color: var(--sc-text);
+      font-size: 28px;
+      font-weight: 400;
+      letter-spacing: -0.045em;
+    }
+
+    #sound-party-widget-stateful-color .sc-battery-info {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    #sound-party-widget-stateful-color .sc-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--sc-muted);
+    }
+
+    #sound-party-widget-stateful-color .sc-charge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: color-mix(in srgb, var(--sc-orange) 78%, var(--sc-text));
+    }
+
+    #sound-party-widget-stateful-color .sc-battery-track,
+    #sound-party-widget-stateful-color .sc-volume-track {
+      position: relative;
+      height: 3px;
+      border-radius: 999px;
+      background: rgba(243, 239, 233, 0.12);
+    }
+
+    #sound-party-widget-stateful-color .sc-battery-fill {
+      width: 68%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--sc-text);
+    }
+
+    #sound-party-widget-stateful-color .sc-expanded {
+      display: none;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget[data-state="expanded"] .sc-expanded {
+      display: block;
+    }
+
+    #sound-party-widget-stateful-color .sc-now-playing {
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr);
+      align-items: center;
+      gap: 13px;
+      margin-top: 22px;
+      padding-top: 20px;
+      border-top: 1px solid var(--sc-line);
+    }
+
+    #sound-party-widget-stateful-color .sc-cover {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      overflow: hidden;
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 72% 28%, rgba(255, 228, 204, 0.32), transparent 22%),
+        linear-gradient(145deg, color-mix(in srgb, var(--sc-orange) 90%, #a33b18), #522215);
+      box-shadow: inset 0 0 0 1px rgba(255, 239, 225, 0.12);
+    }
+
+    #sound-party-widget-stateful-color .sc-cover::before,
+    #sound-party-widget-stateful-color .sc-cover::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 235, 218, 0.34);
+    }
+
+    #sound-party-widget-stateful-color .sc-cover::before {
+      width: 54px;
+      height: 54px;
+      top: 20px;
+      left: -15px;
+    }
+
+    #sound-party-widget-stateful-color .sc-cover::after {
+      width: 30px;
+      height: 30px;
+      top: 30px;
+      left: -3px;
+    }
+
+    #sound-party-widget-stateful-color .sc-track-copy {
+      min-width: 0;
+    }
+
+    #sound-party-widget-stateful-color .sc-playing {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 5px;
+      color: color-mix(in srgb, var(--sc-orange) 78%, var(--sc-text));
+    }
+
+    #sound-party-widget-stateful-color .sc-playing-bar {
+      width: 13px;
+      height: 2px;
+      border-radius: 999px;
+      background: var(--sc-orange);
+    }
+
+    #sound-party-widget-stateful-color .sc-track-name {
+      overflow: hidden;
+      color: var(--sc-text);
+      font-weight: 500;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #sound-party-widget-stateful-color .sc-track-artist {
+      overflow: hidden;
+      margin-top: 3px;
+      color: var(--sc-muted);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #sound-party-widget-stateful-color .sc-media-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      margin-top: 18px;
+    }
+
+    #sound-party-widget-stateful-color .sc-media-button {
+      width: 39px;
+      height: 39px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border-radius: 13px;
+      background: var(--sc-raised);
+      color: var(--sc-muted);
+    }
+
+    #sound-party-widget-stateful-color .sc-media-button.sc-primary {
+      width: 46px;
+      height: 46px;
+      border-radius: 15px;
+      background: var(--sc-text);
+      color: var(--sc-black);
+    }
+
+    #sound-party-widget-stateful-color .sc-volume {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 11px;
+      margin-top: 19px;
+      color: var(--sc-muted);
+    }
+
+    #sound-party-widget-stateful-color .sc-volume-fill {
+      position: relative;
+      width: 62%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--sc-orange);
+    }
+
+    #sound-party-widget-stateful-color .sc-volume-fill::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -4px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--sc-text);
+      box-shadow: 0 0 0 2px var(--sc-black);
+      transform: translateY(-50%);
+    }
+
+    #sound-party-widget-stateful-color .sc-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 21px;
+      padding-top: 17px;
+      border-top: 1px solid var(--sc-line);
+    }
+
+    #sound-party-widget-stateful-color .sc-output-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 11px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--sc-orange) 12%, transparent);
+      color: color-mix(in srgb, var(--sc-orange) 82%, var(--sc-text));
+      font-weight: 500;
+    }
+
+    #sound-party-widget-stateful-color .sc-quiet-button {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border-radius: 11px;
+      background: transparent;
+      color: var(--sc-muted);
+    }
+
+    #sound-party-widget-stateful-color .sc-offline {
+      display: none;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget[data-state="offline"] {
+      width: 66px;
+      min-height: 66px;
+      border-radius: 20px;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget[data-state="offline"] .sc-main,
+    #sound-party-widget-stateful-color .sc-widget[data-state="offline"] .sc-rail,
+    #sound-party-widget-stateful-color .sc-widget[data-state="offline"] .sc-compact-mark {
+      display: none;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget[data-state="offline"] .sc-offline {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--sc-faint);
+    }
+
+    #sound-party-widget-stateful-color .sc-offline::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      width: 3px;
+      height: 21px;
+      border-radius: 3px 0 0 3px;
+      background: color-mix(in srgb, var(--sc-orange) 40%, var(--sc-black));
+    }
+
+    #sound-party-widget-stateful-color .sc-widget.sc-no-rail .sc-rail {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+
+    #sound-party-widget-stateful-color .sc-widget.sc-no-rail[data-state="expanded"] .sc-main {
+      padding-right: 21px;
+    }
+
+    #sound-party-widget-stateful-color .sc-widget.sc-no-rail[data-state="expanded"] .sc-compact-mark {
+      opacity: 1;
+      height: 52px;
+    }
+
+    @media (max-width: 700px) {
+      #sound-party-widget-stateful-color .sc-desktop {
+        min-height: 570px;
+      }
+
+      #sound-party-widget-stateful-color .sc-context {
+        position: static;
+        max-width: none;
+        padding: 18px 18px 0;
+      }
+
+      #sound-party-widget-stateful-color .sc-widget {
+        top: 106px;
+        right: 14px;
+      }
+
+      #sound-party-widget-stateful-color .sc-placement {
+        left: 18px;
+      }
+    }
+
+    @media (max-width: 390px) {
+      #sound-party-widget-stateful-color .sc-main,
+      #sound-party-widget-stateful-color .sc-widget[data-state="expanded"] .sc-main {
+        padding-left: 16px;
+      }
+
+      #sound-party-widget-stateful-color .sc-connected span:last-child {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #sound-party-widget-stateful-color .sc-widget,
+      #sound-party-widget-stateful-color .sc-widget::before,
+      #sound-party-widget-stateful-color .sc-main,
+      #sound-party-widget-stateful-color .sc-rail {
+        transition: none;
+      }
+    }
+  </style>
+
+  <div class="sc-layout">
+    <div class="nav nav-pills sc-tabs" role="tablist" aria-label="组件状态预览">
+      <button class="nav-link active" type="button" role="tab" aria-selected="true" data-sc-state="compact">紧凑</button>
+      <button class="nav-link" type="button" role="tab" aria-selected="false" data-sc-state="expanded">展开</button>
+      <button class="nav-link" type="button" role="tab" aria-selected="false" data-sc-state="offline">离线</button>
+    </div>
+
+    <section class="sc-desktop" aria-label="小米蓝牙音箱 Pro 状态化配色组件效果">
+      <div class="sc-context">
+        <strong id="sc-state-label" aria-live="polite">紧凑状态 · 克制</strong>
+        紧凑状态使用低饱和提示色，展开后切换为音箱本体的高饱和亮橙。
+      </div>
+
+      <div class="sc-widget" data-state="compact" aria-label="小米蓝牙音箱 Pro 桌面组件">
+        <span class="sc-compact-mark" aria-hidden="true"></span>
+
+        <aside class="sc-rail" aria-label="展开状态快捷控制带">
+          <button class="sc-rail-button" type="button" aria-label="收起组件" data-tooltip="收起"><i data-lucide="chevron-up" aria-hidden="true"></i></button>
+          <div class="sc-rail-signal" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="sc-rail-group">
+            <button class="sc-rail-button" type="button" aria-label="静音" data-tooltip="静音"><i data-lucide="volume-x" aria-hidden="true"></i></button>
+            <button class="sc-rail-button" type="button" aria-label="设置" data-tooltip="设置"><i data-lucide="settings-2" aria-hidden="true"></i></button>
+          </div>
+        </aside>
+
+        <div class="sc-main">
+          <div class="sc-header">
+            <div class="sc-device-icon" aria-hidden="true"><i data-lucide="speaker"></i></div>
+            <div class="sc-device-copy">
+              <div class="sc-device-name">小米蓝牙音箱 Pro</div>
+              <div class="sc-device-detail">立体声输出 · A2DP</div>
+            </div>
+            <div class="sc-connected"><span class="sc-connected-dot"></span><span>已连接</span></div>
+          </div>
+
+          <div class="sc-summary">
+            <div class="sc-battery tabular-nums">68%</div>
+            <div class="sc-battery-info">
+              <div class="sc-meta">
+                <span class="sc-charge"><i data-lucide="battery-charging" aria-hidden="true"></i>充电中</span>
+                <span>约 5 小时</span>
+              </div>
+              <div class="sc-battery-track" role="progressbar" aria-label="音箱电量" aria-valuenow="68" aria-valuemin="0" aria-valuemax="100">
+                <div class="sc-battery-fill"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sc-expanded">
+            <div class="sc-now-playing">
+              <div class="sc-cover" aria-hidden="true"></div>
+              <div class="sc-track-copy">
+                <div class="sc-playing"><span class="sc-playing-bar"></span>正在播放</div>
+                <div class="sc-track-name">Midnight City</div>
+                <div class="sc-track-artist">M83 · Hurry Up, We're Dreaming</div>
+              </div>
+            </div>
+
+            <div class="sc-media-controls" aria-label="媒体控制">
+              <button class="sc-media-button" type="button" aria-label="上一首"><i data-lucide="skip-back" aria-hidden="true"></i></button>
+              <button class="sc-media-button sc-primary" type="button" aria-label="暂停"><i data-lucide="pause" aria-hidden="true"></i></button>
+              <button class="sc-media-button" type="button" aria-label="下一首"><i data-lucide="skip-forward" aria-hidden="true"></i></button>
+            </div>
+
+            <div class="sc-volume">
+              <i data-lucide="volume-1" aria-hidden="true"></i>
+              <div class="sc-volume-track" role="progressbar" aria-label="系统音量" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100">
+                <div class="sc-volume-fill"></div>
+              </div>
+              <span class="tabular-nums">62</span>
+            </div>
+
+            <div class="sc-bottom">
+              <button class="sc-output-button" type="button"><i data-lucide="check" aria-hidden="true"></i>当前音频输出</button>
+              <button class="sc-quiet-button" type="button" aria-label="更多设置" data-tooltip="更多设置"><i data-lucide="sliders-horizontal" aria-hidden="true"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sc-offline" aria-label="音箱离线"><i data-lucide="speaker" aria-hidden="true"></i></div>
+      </div>
+
+      <div class="sc-placement">副屏 · 右上角吸附</div>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const root = document.getElementById("sound-party-widget-stateful-color");
+      const widget = root.querySelector(".sc-widget");
+      const label = root.querySelector("#sc-state-label");
+      const tabs = [...root.querySelectorAll("[data-sc-state]")];
+      const accents = {
+        matched: { compact: "#9c6044", expanded: "#f45b16", ink: "#211008" },
+        vivid: { compact: "#ae6038", expanded: "#f56600", ink: "#1f1007" },
+        copper: { compact: "#815f4e", expanded: "#cb7145", ink: "#21150f" }
+      };
+      const state = {
+        view: "compact",
+        accentStyle: "matched",
+        radius: 24,
+        texture: true,
+        expandedRail: true
+      };
+      const labels = {
+        compact: "紧凑状态 · 克制",
+        expanded: "展开状态 · 品牌色增强",
+        offline: "离线状态 · 最低视觉干扰"
+      };
+
+      function render() {
+        const accent = accents[state.accentStyle];
+        const activeOrange = state.view === "expanded" ? accent.expanded : accent.compact;
+        root.style.setProperty("--sc-orange", activeOrange);
+        root.style.setProperty("--sc-orange-ink", accent.ink);
+        root.style.setProperty("--sc-radius", `${state.radius}px`);
+        widget.dataset.state = state.view;
+        widget.classList.toggle("sc-no-texture", !state.texture);
+        widget.classList.toggle("sc-no-rail", !state.expandedRail);
+        label.textContent = labels[state.view];
+
+        tabs.forEach((tab) => {
+          const selected = tab.dataset.scState === state.view;
+          tab.classList.toggle("active", selected);
+          tab.setAttribute("aria-selected", String(selected));
+        });
+      }
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          state.view = tab.dataset.scState;
+          render();
+        });
+      });
+
+      render();
+
+      if (globalThis.Tweak) {
+        const tweak = new Tweak({ container: root, onChange: render });
+        tweak.addSelect(state, "view", {
+          label: "预览状态",
+          reference: "widget.view",
+          options: [
+            { label: "紧凑", value: "compact" },
+            { label: "展开", value: "expanded" },
+            { label: "离线", value: "offline" }
+          ]
+        });
+        tweak.addSelect(state, "accentStyle", {
+          label: "橙色风格",
+          reference: "widget.accent",
+          options: [
+            { label: "本体匹配橙（推荐）", value: "matched" },
+            { label: "小米鲜橙", value: "vivid" },
+            { label: "低饱和铜橙", value: "copper" }
+          ]
+        });
+        tweak.addToggle(state, "expandedRail", { label: "展开显示控制带", reference: "widget.rail" });
+        tweak.addToggle(state, "texture", { label: "织物纹理", reference: "widget.texture" });
+        tweak.addSlider(state, "radius", { label: "组件圆角", min: 16, max: 30, unit: "px", reference: "--sc-radius" });
+      }
+    })();
+  </script>
+</div>

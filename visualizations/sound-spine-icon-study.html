@@ -1,0 +1,466 @@
+<div id="sound-spine-icon-study">
+  <style>
+    #sound-spine-icon-study {
+      --ssi-page-fg: light-dark(#24221f, #f2eee7);
+      --ssi-page-muted: light-dark(#6d675f, #aaa39a);
+      --ssi-divider: light-dark(rgba(36,34,31,.12), rgba(242,238,231,.13));
+      width: 100%;
+      color: var(--ssi-page-fg);
+    }
+
+    #sound-spine-icon-study * { box-sizing: border-box; }
+    #sound-spine-icon-study .ssi-title { margin: 0 0 4px; font-weight: 500; }
+    #sound-spine-icon-study .ssi-subtitle { margin: 0 0 14px; color: var(--ssi-page-muted); }
+    #sound-spine-icon-study .ssi-state-tabs { margin-bottom: 18px; }
+
+    #sound-spine-icon-study .ssi-study {
+      --ssi-badge: #191918;
+      --ssi-badge-edge: rgba(245,241,234,.15);
+      --ssi-core: #f1ede6;
+      --ssi-core-muted: #8f8a82;
+      --ssi-accent-active: #f45b16;
+      --ssi-accent-quiet: #9c6044;
+      --ssi-disabled: #77726b;
+      --ssi-radius: 24%;
+      display: grid;
+      grid-template-columns: minmax(280px, .9fr) minmax(360px, 1.35fr);
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    #sound-spine-icon-study .ssi-preview-surface,
+    #sound-spine-icon-study .ssi-tray-surface {
+      min-height: 430px;
+      overflow: hidden;
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 78% 18%, rgba(156,96,68,.16), transparent 28%),
+        linear-gradient(145deg, #363530, #161615 72%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+      font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    }
+
+    #sound-spine-icon-study .ssi-preview-surface {
+      position: relative;
+      display: grid;
+      place-items: center;
+      padding: 36px;
+    }
+
+    #sound-spine-icon-study .ssi-preview-surface::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: .14;
+      background-image: linear-gradient(118deg, transparent 47%, rgba(255,255,255,.06) 50%, transparent 53%);
+      background-size: 68px 68px;
+      pointer-events: none;
+    }
+
+    #sound-spine-icon-study .ssi-widget-demo {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: 18px;
+    }
+
+    #sound-spine-icon-study .ssi-widget-icon {
+      width: 52px;
+      height: 52px;
+      position: relative;
+      border: 0;
+      padding: 0;
+      border-radius: 16px;
+      color: #f1ede6;
+      background: #191918;
+      box-shadow:
+        0 16px 36px rgba(0,0,0,.36),
+        inset 0 0 0 1px rgba(245,241,234,.10);
+      transition: transform 100ms ease, background 100ms ease;
+    }
+
+    #sound-spine-icon-study .ssi-widget-icon:hover { background: #22211f; }
+    #sound-spine-icon-study .ssi-widget-icon:active { transform: translateY(1px); }
+    #sound-spine-icon-study .ssi-widget-icon .ssi-mark { position: absolute; inset: 8px; }
+    #sound-spine-icon-study .ssi-widget-caption { color: rgba(243,239,233,.82); text-align: center; }
+    #sound-spine-icon-study .ssi-widget-caption span { display: block; margin-top: 4px; color: rgba(243,239,233,.52); font-size: 12px; }
+
+    #sound-spine-icon-study .ssi-tray-surface {
+      padding: 24px;
+      color: #f3efe9;
+      background: #1d1d1b;
+    }
+
+    #sound-spine-icon-study .ssi-section-label {
+      margin-bottom: 12px;
+      color: #b8b1a8;
+      font-weight: 500;
+    }
+
+    #sound-spine-icon-study .ssi-taskbar {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 0 18px;
+      border-radius: 14px;
+      box-shadow: 0 10px 24px rgba(0,0,0,.18);
+    }
+
+    #sound-spine-icon-study .ssi-taskbar + .ssi-taskbar { margin-top: 12px; }
+    #sound-spine-icon-study .ssi-taskbar-light { color: #2c2a27; background: rgba(246,243,237,.96); }
+    #sound-spine-icon-study .ssi-taskbar-dark { color: #f0ece5; background: rgba(31,31,30,.96); box-shadow: inset 0 0 0 1px rgba(255,255,255,.07), 0 10px 24px rgba(0,0,0,.28); }
+    #sound-spine-icon-study .ssi-taskbar-time { margin-right: auto; opacity: .66; font-size: 12px; font-variant-numeric: tabular-nums; }
+    #sound-spine-icon-study .ssi-tray-chevron { opacity: .64; }
+
+    #sound-spine-icon-study .ssi-size-strip {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 28px;
+      padding-top: 22px;
+      border-top: 1px solid rgba(243,239,233,.10);
+    }
+
+    #sound-spine-icon-study .ssi-size-item {
+      min-width: 44px;
+      display: grid;
+      justify-items: center;
+      gap: 9px;
+      color: #938d85;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #sound-spine-icon-study .ssi-size-item:last-child { margin-left: auto; }
+
+    #sound-spine-icon-study .ssi-tray-icon {
+      --ssi-size: 20px;
+      width: var(--ssi-size);
+      height: var(--ssi-size);
+      position: relative;
+      flex: 0 0 auto;
+      border-radius: var(--ssi-radius);
+      background: var(--ssi-badge);
+      box-shadow: inset 0 0 0 max(1px, calc(var(--ssi-size) * .045)) var(--ssi-badge-edge);
+    }
+
+    #sound-spine-icon-study .ssi-size-16 { --ssi-size: 16px; }
+    #sound-spine-icon-study .ssi-size-20 { --ssi-size: 20px; }
+    #sound-spine-icon-study .ssi-size-24 { --ssi-size: 24px; }
+    #sound-spine-icon-study .ssi-size-32 { --ssi-size: 32px; }
+    #sound-spine-icon-study .ssi-size-52 { --ssi-size: 52px; }
+    #sound-spine-icon-study .ssi-size-16 .ssi-node,
+    #sound-spine-icon-study .ssi-size-20 .ssi-node { display: none; }
+    #sound-spine-icon-study .ssi-size-16 .ssi-stem,
+    #sound-spine-icon-study .ssi-size-20 .ssi-stem { height: 100%; }
+
+    #sound-spine-icon-study .ssi-mark {
+      position: absolute;
+      inset: 15%;
+      color: var(--ssi-core);
+    }
+
+    #sound-spine-icon-study .ssi-core {
+      position: absolute;
+      left: 12%;
+      top: 15%;
+      width: 46%;
+      height: 70%;
+      border-radius: 42%;
+      background: currentColor;
+      transition: color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+    }
+
+    #sound-spine-icon-study .ssi-core::after {
+      content: "";
+      position: absolute;
+      left: 24%;
+      top: 23%;
+      width: 52%;
+      height: 54%;
+      border-radius: 44%;
+      background: rgba(25,25,24,.20);
+    }
+
+    #sound-spine-icon-study .ssi-spine {
+      position: absolute;
+      right: 14%;
+      top: 15%;
+      width: 10%;
+      height: 70%;
+      color: var(--ssi-accent-active);
+    }
+
+    #sound-spine-icon-study .ssi-stem {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 69%;
+      border-radius: 999px;
+      background: currentColor;
+      transition: height 140ms ease, background 140ms ease, opacity 140ms ease;
+    }
+
+    #sound-spine-icon-study .ssi-node {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: 210%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: currentColor;
+      transform: translateX(-50%);
+      transition: background 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+    }
+
+    #sound-spine-icon-study .ssi-cut {
+      position: absolute;
+      left: 5%;
+      top: 46%;
+      width: 94%;
+      height: 11%;
+      border-radius: 999px;
+      background: var(--ssi-badge);
+      opacity: 0;
+      transform: rotate(-42deg);
+      transition: opacity 140ms ease;
+    }
+
+    #sound-spine-icon-study .ssi-study[data-state="connected"] .ssi-core { color: var(--ssi-core-muted); }
+    #sound-spine-icon-study .ssi-study[data-state="connected"] .ssi-spine { color: var(--ssi-accent-quiet); }
+    #sound-spine-icon-study .ssi-study[data-state="connected"] .ssi-node {
+      background: transparent;
+      box-shadow: inset 0 0 0 max(1px, calc(var(--ssi-size, 52px) * .045)) currentColor;
+    }
+
+    #sound-spine-icon-study .ssi-study[data-state="offline"] .ssi-core { color: #57534d; }
+    #sound-spine-icon-study .ssi-study[data-state="offline"] .ssi-size-16 .ssi-core,
+    #sound-spine-icon-study .ssi-study[data-state="offline"] .ssi-size-20 .ssi-core { color: #9e988f; }
+    #sound-spine-icon-study .ssi-study[data-state="offline"] .ssi-spine { color: var(--ssi-accent-quiet); }
+    #sound-spine-icon-study .ssi-study[data-state="offline"] .ssi-stem { height: 52%; }
+
+    #sound-spine-icon-study .ssi-study[data-state="bluetooth"] .ssi-core {
+      color: var(--ssi-disabled);
+      background: transparent;
+      box-shadow: inset 0 0 0 max(1px, calc(var(--ssi-size, 52px) * .055)) currentColor;
+    }
+    #sound-spine-icon-study .ssi-study[data-state="bluetooth"] .ssi-core::after { display: none; }
+    #sound-spine-icon-study .ssi-study[data-state="bluetooth"] .ssi-spine { color: var(--ssi-disabled); opacity: .42; }
+    #sound-spine-icon-study .ssi-study[data-state="bluetooth"] .ssi-cut { opacity: 1; background: var(--ssi-disabled); }
+
+    #sound-spine-icon-study .ssi-state-note {
+      margin-top: 18px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #b8b1a8;
+      font-size: 12px;
+    }
+
+    #sound-spine-icon-study .ssi-state-note::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--ssi-accent-active);
+    }
+
+    #sound-spine-icon-study .ssi-study[data-state="offline"] .ssi-state-note::before { background: var(--ssi-accent-quiet); }
+    #sound-spine-icon-study .ssi-study[data-state="bluetooth"] .ssi-state-note::before { background: var(--ssi-disabled); }
+
+    #sound-spine-icon-study .ssi-anatomy {
+      position: absolute;
+      left: 24px;
+      top: 24px;
+      display: grid;
+      gap: 7px;
+      color: rgba(243,239,233,.55);
+      font-size: 12px;
+    }
+
+    #sound-spine-icon-study .ssi-anatomy strong { color: rgba(243,239,233,.88); font-weight: 500; }
+
+    @media (max-width: 760px) {
+      #sound-spine-icon-study .ssi-study { grid-template-columns: 1fr; }
+      #sound-spine-icon-study .ssi-preview-surface,
+      #sound-spine-icon-study .ssi-tray-surface { min-height: 360px; }
+      #sound-spine-icon-study .ssi-size-strip { flex-wrap: wrap; justify-content: flex-start; }
+      #sound-spine-icon-study .ssi-size-item:last-child { margin-left: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #sound-spine-icon-study .ssi-core,
+      #sound-spine-icon-study .ssi-stem,
+      #sound-spine-icon-study .ssi-node,
+      #sound-spine-icon-study .ssi-cut { transition-duration: 1ms; }
+    }
+  </style>
+
+  <h2 class="ssi-title">Sound Spine Mark</h2>
+  <p class="ssi-subtitle">同一个抽象声核与纵向声脊，覆盖桌面缩略态和系统托盘。</p>
+
+  <div class="nav nav-pills ssi-state-tabs" role="tablist" aria-label="图标状态">
+    <button class="nav-link" type="button" data-state-choice="output" aria-selected="false">当前输出</button>
+    <button class="nav-link" type="button" data-state-choice="connected" aria-selected="false">已连接</button>
+    <button class="nav-link active" type="button" data-state-choice="offline" aria-selected="true">离线</button>
+    <button class="nav-link" type="button" data-state-choice="bluetooth" aria-selected="false">蓝牙不可用</button>
+  </div>
+
+  <section class="ssi-study" data-state="offline" aria-label="Sound Party Companion 图标系统">
+    <div class="ssi-preview-surface">
+      <div class="ssi-anatomy" aria-hidden="true">
+        <strong>P2 缩略态</strong>
+        <span>减少一层轮廓</span>
+        <span>状态由声脊结构表达</span>
+      </div>
+      <div class="ssi-widget-demo">
+        <button class="ssi-widget-icon cursor-interaction" type="button" aria-label="Sound Party Companion 音箱离线" data-widget-icon>
+          <span class="ssi-mark" aria-hidden="true">
+            <span class="ssi-core"></span><span class="ssi-spine"><span class="ssi-stem"></span><span class="ssi-node"></span></span><span class="ssi-cut"></span>
+          </span>
+        </button>
+        <div class="ssi-widget-caption" data-widget-caption>音箱当前离线<span>声核留暗，声脊与节点断开</span></div>
+      </div>
+    </div>
+
+    <div class="ssi-tray-surface">
+      <div class="ssi-section-label">浅色任务栏 · 20 px 实显</div>
+      <div class="ssi-taskbar ssi-taskbar-light">
+        <span class="ssi-taskbar-time">10:24</span>
+        <i data-lucide="chevron-up" class="ssi-tray-chevron" aria-hidden="true"></i>
+        <span class="ssi-tray-icon ssi-size-20" role="img" aria-label="Sound Party Companion 托盘图标">
+          <span class="ssi-mark"><span class="ssi-core"></span><span class="ssi-spine"><span class="ssi-stem"></span><span class="ssi-node"></span></span><span class="ssi-cut"></span></span>
+        </span>
+        <i data-lucide="wifi" aria-hidden="true"></i>
+        <i data-lucide="volume-2" aria-hidden="true"></i>
+      </div>
+
+      <div class="ssi-section-label" style="margin-top:18px">深色任务栏 · 20 px 实显</div>
+      <div class="ssi-taskbar ssi-taskbar-dark">
+        <span class="ssi-taskbar-time">10:24</span>
+        <i data-lucide="chevron-up" class="ssi-tray-chevron" aria-hidden="true"></i>
+        <span class="ssi-tray-icon ssi-size-20" role="img" aria-label="Sound Party Companion 托盘图标">
+          <span class="ssi-mark"><span class="ssi-core"></span><span class="ssi-spine"><span class="ssi-stem"></span><span class="ssi-node"></span></span><span class="ssi-cut"></span></span>
+        </span>
+        <i data-lucide="wifi" aria-hidden="true"></i>
+        <i data-lucide="volume-2" aria-hidden="true"></i>
+      </div>
+
+      <div class="ssi-size-strip" aria-label="托盘图标多尺寸">
+        <div class="ssi-size-item"><span class="ssi-tray-icon ssi-size-16"><span class="ssi-mark"><span class="ssi-core"></span><span class="ssi-spine"><span class="ssi-stem"></span><span class="ssi-node"></span></span><span class="ssi-cut"></span></span></span><span>16</span></div>
+        <div class="ssi-size-item"><span class="ssi-tray-icon ssi-size-20"><span class="ssi-mark"><span class="ssi-core"></span><span class="ssi-spine"><span class="ssi-stem"></span><span class="ssi-node"></span></span><span class="ssi-cut"></span></span></span><span>20</span></div>
+        <div class="ssi-size-item"><span class="ssi-tray-icon ssi-size-24"><span class="ssi-mark"><span class="ssi-core"></span><span class="ssi-spine"><span class="ssi-stem"></span><span class="ssi-node"></span></span><span class="ssi-cut"></span></span></span><span>24</span></div>
+        <div class="ssi-size-item"><span class="ssi-tray-icon ssi-size-32"><span class="ssi-mark"><span class="ssi-core"></span><span class="ssi-spine"><span class="ssi-stem"></span><span class="ssi-node"></span></span><span class="ssi-cut"></span></span></span><span>32</span></div>
+        <div class="ssi-size-item"><span class="ssi-tray-icon ssi-size-52"><span class="ssi-mark"><span class="ssi-core"></span><span class="ssi-spine"><span class="ssi-stem"></span><span class="ssi-node"></span></span><span class="ssi-cut"></span></span></span><span>52</span></div>
+      </div>
+
+      <div class="ssi-state-note" data-state-note aria-live="polite">离线不靠颜色判断：暗色声核和断开的节点共同表达不可用。</div>
+    </div>
+  </section>
+
+  <script>
+    (() => {
+      const root = document.getElementById('sound-spine-icon-study');
+      if (!root) return;
+      const study = root.querySelector('.ssi-study');
+      const tabs = [...root.querySelectorAll('[data-state-choice]')];
+      const note = root.querySelector('[data-state-note]');
+      const caption = root.querySelector('[data-widget-caption]');
+      const widgetIcon = root.querySelector('[data-widget-icon]');
+      const saved = window.openai?.widgetState?.privateContent || {};
+      const state = { current: typeof saved.current === 'string' ? saved.current : 'offline' };
+      const visual = {
+        activeAccent: '#f45b16',
+        quietAccent: '#9c6044',
+        badge: '#191918',
+        radius: 24
+      };
+
+      const copy = {
+        output: {
+          caption: '正在作为当前输出',
+          detail: '52 DIP · 可点击展开控制',
+          note: '亮橙声脊连续，表示正在承担声音输出。',
+          aria: 'Sound Party Companion 当前输出'
+        },
+        connected: {
+          caption: '已连接，未作为输出',
+          detail: '声脊保留，节点改为空心',
+          note: '连续声脊保留设备身份，空心节点表示尚未成为当前输出。',
+          aria: 'Sound Party Companion 已连接但不是当前输出'
+        },
+        offline: {
+          caption: '音箱当前离线',
+          detail: '声核留空，声脊与节点断开',
+          note: '离线不靠颜色判断：空心声核和断开的节点共同表达不可用。',
+          aria: 'Sound Party Companion 音箱离线'
+        },
+        bluetooth: {
+          caption: '电脑蓝牙不可用',
+          detail: '中性斜切覆盖整个标记',
+          note: '蓝牙不可用使用结构性斜切，与普通离线明确区分。',
+          aria: 'Sound Party Companion 电脑蓝牙不可用'
+        }
+      };
+
+      function persist() {
+        window.openai?.setWidgetState?.({
+          modelContent: { iconState: state.current },
+          privateContent: { current: state.current }
+        }).catch(() => {});
+      }
+
+      function renderState(save = true) {
+        if (!copy[state.current]) state.current = 'output';
+        study.dataset.state = state.current;
+        tabs.forEach(tab => {
+          const selected = tab.dataset.stateChoice === state.current;
+          tab.classList.toggle('active', selected);
+          tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+        });
+        const current = copy[state.current];
+        caption.innerHTML = `${current.caption}<span>${current.detail}</span>`;
+        note.textContent = current.note;
+        widgetIcon.setAttribute('aria-label', current.aria);
+        if (save) persist();
+      }
+
+      function renderVisual() {
+        study.style.setProperty('--ssi-accent-active', visual.activeAccent);
+        study.style.setProperty('--ssi-accent-quiet', visual.quietAccent);
+        study.style.setProperty('--ssi-badge', visual.badge);
+        study.style.setProperty('--ssi-radius', `${visual.radius}%`);
+      }
+
+      tabs.forEach(tab => tab.addEventListener('click', () => {
+        state.current = tab.dataset.stateChoice;
+        renderState();
+      }));
+
+      window.addEventListener('openai:set_globals', event => {
+        const incoming = event.detail?.globals?.widgetState?.privateContent;
+        if (!incoming || typeof incoming.current !== 'string') return;
+        state.current = incoming.current;
+        renderState(false);
+      });
+
+      renderVisual();
+      renderState(false);
+
+      if (globalThis.Tweak) {
+        const tweak = new Tweak({ container: study, onChange: renderVisual });
+        tweak.addColorPicker(visual, 'activeAccent', { label: '当前输出橙', reference: '--ssi-accent-active' });
+        tweak.addColorPicker(visual, 'quietAccent', { label: '离线提示橙', reference: '--ssi-accent-quiet' });
+        tweak.addColorPicker(visual, 'badge', { label: '图标底色', reference: '--ssi-badge' });
+        tweak.addSlider(visual, 'radius', { label: '托盘圆角', min: 16, max: 36, unit: '%', reference: '--ssi-radius' });
+      }
+    })();
+  </script>
+</div>

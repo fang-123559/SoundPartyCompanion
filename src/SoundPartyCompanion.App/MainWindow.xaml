@@ -1,0 +1,903 @@
+<Window x:Class="SoundPartyCompanion.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:settings="clr-namespace:SoundPartyCompanion.Core.Settings;assembly=SoundPartyCompanion.Core"
+        Title="Sound Party Companion"
+        Width="{Binding WidgetWidth, Mode=OneWay}"
+        Height="{Binding WidgetHeight, Mode=OneWay}"
+        MinWidth="66"
+        MinHeight="66"
+        MaxWidth="388"
+        MaxHeight="432"
+        WindowStartupLocation="Manual"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        FontFamily="Segoe UI Variable, Segoe UI, Microsoft YaHei UI"
+        Opacity="{Binding WindowOpacity}"
+        Topmost="{Binding AlwaysOnTop}"
+        StateChanged="HandleWindowStateChanged"
+        Deactivated="HandleWindowDeactivated"
+        PreviewMouseLeftButtonDown="HandlePointerDown"
+        PreviewMouseMove="HandlePointerMove"
+        PreviewMouseLeftButtonUp="HandlePointerUp">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="CarbonBrush" Color="#171716" />
+        <SolidColorBrush x:Key="RaisedBrush" Color="#232220" />
+        <SolidColorBrush x:Key="SoftBrush" Color="#1D1C1A" />
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F3EFE9" />
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#AAA49B" />
+        <SolidColorBrush x:Key="TextFaintBrush" Color="#746F68" />
+        <SolidColorBrush x:Key="CompactOrangeBrush" Color="#9C6044" />
+        <SolidColorBrush x:Key="ExpandedOrangeBrush" Color="#F45B16" />
+        <SolidColorBrush x:Key="OrangeInkBrush" Color="#211008" />
+        <SolidColorBrush x:Key="ConnectedBrush" Color="#83A488" />
+        <SolidColorBrush x:Key="DividerBrush" Color="#18F3EFE9" />
+
+        <DrawingBrush x:Key="FabricBrush"
+                      TileMode="Tile"
+                      Viewport="0,0,7,7"
+                      ViewportUnits="Absolute">
+            <DrawingBrush.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="#171716" Geometry="M0,0 H7 V7 H0 Z" />
+                    <GeometryDrawing Brush="#1F1E1C" Geometry="M0,1 H7 V2 H0 Z" />
+                    <GeometryDrawing Brush="#151514" Geometry="M1,0 H2 V7 H1 Z" />
+                </DrawingGroup>
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+
+        <Style x:Key="QuietIconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="11">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#122F2E2B" />
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#203A3834" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.38" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MediaButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="39" />
+            <Setter Property="Height" Value="39" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface"
+                                Width="{TemplateBinding Width}"
+                                Height="{TemplateBinding Height}"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="13">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#302F2C" />
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Opacity" Value="0.78" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.34" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryMediaButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{StaticResource CarbonBrush}" />
+            <Setter Property="Background" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface"
+                                Width="{TemplateBinding Width}"
+                                Height="{TemplateBinding Height}"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="15">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Opacity" Value="0.78" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.34" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RailButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{StaticResource OrangeInkBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="12">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#1C211008" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#30211008" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.36" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="OutputButtonStyle" TargetType="Button">
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="Padding" Value="11,7" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Foreground" Value="#F2A17B" />
+            <Setter Property="Background" Value="#263D241A" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#403D241A" />
+                                <Setter Property="Foreground" Value="#FFC0A1" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Opacity" Value="0.78" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.72" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SoundSliderStyle" TargetType="Slider">
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Height="22" Background="Transparent">
+                            <Track x:Name="PART_Track"
+                                   Margin="0"
+                                   VerticalAlignment="Center">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}"
+                                                  IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="3"
+                                                        Background="{StaticResource ExpandedOrangeBrush}"
+                                                        CornerRadius="2" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="10" Height="10">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Fill="{StaticResource TextPrimaryBrush}"
+                                                         Stroke="{StaticResource CarbonBrush}"
+                                                         StrokeThickness="2" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}"
+                                                  IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="3"
+                                                        Background="#22F3EFE9"
+                                                        CornerRadius="2" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CompactProgressStyle" TargetType="ProgressBar">
+            <Setter Property="Height" Value="3" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="#20F3EFE9" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Border x:Name="PART_Track"
+                                Height="3"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="2">
+                            <Border x:Name="PART_Indicator"
+                                    HorizontalAlignment="Left"
+                                    Background="{TemplateBinding Foreground}"
+                                    CornerRadius="2" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Window.ContextMenu>
+        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+            <ContextMenu.Resources>
+                <Style x:Key="ConnectedMenuItemStyle" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsConnected}" Value="False">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+                <Style x:Key="ConnectedSeparatorStyle" TargetType="Separator" BasedOn="{StaticResource {x:Type Separator}}">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsConnected}" Value="False">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ContextMenu.Resources>
+            <MenuItem Header="{Binding ToggleExpandedCommandText}" Command="{Binding ToggleExpandedCommand}"
+                      Style="{StaticResource ConnectedMenuItemStyle}" />
+            <Separator Style="{StaticResource ConnectedSeparatorStyle}" />
+            <MenuItem Header="上一首" Command="{Binding PreviousCommand}" Style="{StaticResource ConnectedMenuItemStyle}" />
+            <MenuItem Header="{Binding PlayPauseCommandText}" Command="{Binding PlayPauseCommand}" Style="{StaticResource ConnectedMenuItemStyle}" />
+            <MenuItem Header="下一首" Command="{Binding NextCommand}" Style="{StaticResource ConnectedMenuItemStyle}" />
+            <Separator Style="{StaticResource ConnectedSeparatorStyle}" />
+            <MenuItem Header="音量 +5" Command="{Binding VolumeUpCommand}" Style="{StaticResource ConnectedMenuItemStyle}" />
+            <MenuItem Header="音量 -5" Command="{Binding VolumeDownCommand}" Style="{StaticResource ConnectedMenuItemStyle}" />
+            <MenuItem Header="{Binding MuteCommandText}" Command="{Binding ToggleMuteCommand}" Style="{StaticResource ConnectedMenuItemStyle}" />
+            <MenuItem Header="设为当前输出" Command="{Binding SetAsCurrentOutputCommand}" Style="{StaticResource ConnectedMenuItemStyle}" />
+            <Separator Style="{StaticResource ConnectedSeparatorStyle}" />
+            <MenuItem Header="重新检测连接" Command="{Binding RefreshConnectionCommand}" />
+            <MenuItem Header="打开蓝牙设置" Command="{Binding OpenBluetoothSettingsCommand}" />
+            <Separator />
+            <MenuItem Header="设置" Command="{Binding OpenSettingsCommand}" />
+        </ContextMenu>
+    </Window.ContextMenu>
+
+    <Grid x:Name="WidgetSurface" RenderTransformOrigin="0.5,0.5">
+        <Grid.RenderTransform>
+            <TransformGroup>
+                <ScaleTransform x:Name="WidgetSurfaceScale" ScaleX="1" ScaleY="1" />
+                <TranslateTransform x:Name="WidgetSurfaceTranslate" X="0" Y="0" />
+            </TransformGroup>
+        </Grid.RenderTransform>
+
+        <Border BorderBrush="{StaticResource DividerBrush}"
+                BorderThickness="1"
+                Background="{StaticResource CarbonBrush}">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="CornerRadius" Value="24" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding WidgetMode}" Value="{x:Static settings:WidgetDisplayMode.Offline}">
+                            <Setter Property="CornerRadius" Value="20" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding WidgetMode}" Value="{x:Static settings:WidgetDisplayMode.OfflineDetails}">
+                            <Setter Property="CornerRadius" Value="20" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="30"
+                                  ShadowDepth="8"
+                                  Opacity="0.31"
+                                  Color="#000000" />
+            </Border.Effect>
+        </Border>
+
+        <!-- 离线：保持可找到，但不持续争夺注意力。 -->
+        <Grid x:Name="OfflinePanel"
+              Cursor="Hand"
+              ToolTip="点击查看连接状态 · 拖动移动">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Setter Property="Opacity" Value="0" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding WidgetMode}" Value="{x:Static settings:WidgetDisplayMode.Offline}">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Setter Property="Opacity" Value="1" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Grid Width="30" Height="36">
+                <Rectangle Width="15"
+                           Height="25"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Fill="#343330"
+                           RadiusX="7"
+                           RadiusY="7" />
+                <Rectangle Width="3"
+                           Height="17"
+                           Margin="0,0,2,0"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Top"
+                           Fill="#6E4A3A"
+                           RadiusX="1.5"
+                           RadiusY="1.5" />
+                <Ellipse Width="5"
+                         Height="5"
+                         Margin="0,0,1,3"
+                         HorizontalAlignment="Right"
+                         VerticalAlignment="Bottom"
+                         Fill="#8A543E" />
+            </Grid>
+            <Border Width="3"
+                    Height="21"
+                    HorizontalAlignment="Right"
+                    Background="#5D3E31"
+                    CornerRadius="3,0,0,3" />
+        </Grid>
+
+        <!-- 离线详情：仅解释本地状态；系统导航必须显式触发。 -->
+        <Grid x:Name="OfflineDetailsPanel" Margin="17,15,16,14">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding WidgetMode}" Value="{x:Static settings:WidgetDisplayMode.OfflineDetails}">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="38" />
+                    <ColumnDefinition Width="11" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="30" />
+                </Grid.ColumnDefinitions>
+                <Border Width="38"
+                        Height="38"
+                        Background="{StaticResource RaisedBrush}"
+                        CornerRadius="13">
+                    <Grid>
+                        <Rectangle Width="14" Height="24" Fill="#3A3936" RadiusX="7" RadiusY="7" />
+                        <Rectangle Width="3" Height="17" Margin="0,0,6,0"
+                                   HorizontalAlignment="Right" VerticalAlignment="Top"
+                                   Fill="{StaticResource CompactOrangeBrush}" RadiusX="1.5" RadiusY="1.5" />
+                        <Ellipse Width="5" Height="5" Margin="0,0,5,5"
+                                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                 Fill="{StaticResource CompactOrangeBrush}" />
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <TextBlock FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Text="{Binding StatusText}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="{StaticResource TextFaintBrush}"
+                               Text="{Binding LastCheckedText}" />
+                </StackPanel>
+                <Button Grid.Column="3"
+                        Style="{StaticResource QuietIconButtonStyle}"
+                        Width="30"
+                        Height="30"
+                        Command="{Binding CloseOfflineDetailsCommand}"
+                        Content="×"
+                        ToolTip="收起"
+                        AutomationProperties.Name="收起离线详情" />
+            </Grid>
+
+            <TextBlock Grid.Row="1"
+                       Margin="49,8,0,0"
+                       VerticalAlignment="Top"
+                       FontSize="12"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       Text="{Binding DetailText}"
+                       TextWrapping="Wrap" />
+
+            <Grid Grid.Row="2" Margin="49,7,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0"
+                        Padding="9,5"
+                        Command="{Binding RefreshConnectionCommand}"
+                        Content="重新检测" />
+                <Button Grid.Column="2"
+                        Padding="9,5"
+                        Background="#2E241F"
+                        BorderBrush="#609C6044"
+                        Foreground="#D18D6B"
+                        Command="{Binding OpenBluetoothSettingsCommand}"
+                        Content="蓝牙设置" />
+            </Grid>
+        </Grid>
+
+        <!-- 紧凑：状态摘要，使用低饱和橙色。 -->
+        <Grid x:Name="CompactPanel"
+              Margin="20,18,18,17"
+              Cursor="Hand"
+              ToolTip="点击展开 · 拖动移动">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Setter Property="Opacity" Value="0" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding WidgetMode}" Value="{x:Static settings:WidgetDisplayMode.Compact}">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Setter Property="Opacity" Value="1" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="38" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Width="38"
+                        Height="38"
+                        Background="{StaticResource RaisedBrush}"
+                        CornerRadius="13">
+                    <Grid>
+                        <Rectangle Width="13" Height="23" Fill="#3A3936" RadiusX="6.5" RadiusY="6.5" />
+                        <Rectangle Width="3" Height="19" Margin="0,0,5,0"
+                                   HorizontalAlignment="Right"
+                                   Fill="{StaticResource CompactOrangeBrush}"
+                                   RadiusX="1.5" RadiusY="1.5" />
+                    </Grid>
+                </Border>
+
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Text="{Binding DeviceName}"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Margin="0,3,0,0"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="11"
+                               Text="{Binding DetailText}"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="3"
+                            Margin="10,0,0,0"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal">
+                    <Ellipse Width="6" Height="6" Margin="0,0,6,0"
+                             Fill="{StaticResource ConnectedBrush}" />
+                    <TextBlock VerticalAlignment="Center"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="11"
+                               Text="已连接" />
+                </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="0,14,7,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="18" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Bottom"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           FontSize="23"
+                           FontWeight="Normal"
+                           Text="{Binding VolumePercent, StringFormat={}{0:0}%}" />
+                <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                    <TextBlock Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="11"
+                               Text="{Binding AudioSummaryText}"
+                               TextTrimming="CharacterEllipsis" />
+                    <ProgressBar Margin="0,7,0,2"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 Value="{Binding VolumePercent, Mode=OneWay}"
+                                 Style="{StaticResource CompactProgressStyle}" />
+                </StackPanel>
+            </Grid>
+
+            <Border Width="3"
+                    Height="36"
+                    Margin="0,4,-18,0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Background="{StaticResource CompactOrangeBrush}"
+                    CornerRadius="3,0,0,3" />
+        </Grid>
+
+        <!-- 展开：增强织物层次，并显示亮橙控制带。 -->
+        <Grid x:Name="ExpandedPanel" ClipToBounds="True">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Setter Property="Opacity" Value="0" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding WidgetMode}" Value="{x:Static settings:WidgetDisplayMode.Expanded}">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Setter Property="Opacity" Value="1" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="48" />
+            </Grid.ColumnDefinitions>
+
+            <Border Margin="1,1,0,1"
+                    Background="{StaticResource FabricBrush}"
+                    CornerRadius="23,0,0,23">
+                <Grid Margin="21,20,20,20">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="38" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Width="38"
+                                Height="38"
+                                Background="{StaticResource RaisedBrush}"
+                                CornerRadius="13">
+                            <Grid>
+                                <Rectangle Width="13" Height="23" Fill="#3A3936" RadiusX="6.5" RadiusY="6.5" />
+                                <Rectangle Width="3" Height="19" Margin="0,0,5,0"
+                                           HorizontalAlignment="Right"
+                                           Fill="{StaticResource CompactOrangeBrush}"
+                                           RadiusX="1.5" RadiusY="1.5" />
+                            </Grid>
+                        </Border>
+
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                            <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding DeviceName}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11"
+                                       Text="{Binding DetailText}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="3"
+                                    Margin="10,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Orientation="Horizontal">
+                            <Ellipse Width="6" Height="6" Margin="0,0,6,0"
+                                     Fill="{StaticResource ConnectedBrush}" />
+                            <TextBlock VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="11"
+                                       Text="已连接" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="1" Margin="0,17,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="18" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Bottom"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   FontSize="28"
+                                   FontWeight="Normal"
+                                   Text="{Binding VolumePercent, StringFormat={}{0:0}%}" />
+                        <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                            <TextBlock Foreground="#D89B7D"
+                                       FontSize="11"
+                                       Text="{Binding AudioSummaryText}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <ProgressBar Margin="0,8,0,3"
+                                         Minimum="0"
+                                         Maximum="100"
+                                         Value="{Binding VolumePercent, Mode=OneWay}"
+                                         Foreground="{StaticResource TextPrimaryBrush}"
+                                         Style="{StaticResource CompactProgressStyle}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border x:Name="ActiveMediaPanel"
+                            Grid.Row="2"
+                            Margin="0,19,0,0"
+                            Padding="0,18,0,0"
+                            BorderBrush="{StaticResource DividerBrush}"
+                            BorderThickness="0,1,0,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasMediaSession}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="52" />
+                                    <ColumnDefinition Width="13" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Width="52" Height="52" CornerRadius="16">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Offset="0" Color="#E76227" />
+                                            <GradientStop Offset="0.55" Color="#A33F1E" />
+                                            <GradientStop Offset="1" Color="#4B2016" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <Grid ClipToBounds="True">
+                                        <Ellipse Width="56" Height="56" Margin="-18,22,0,0"
+                                                 Stroke="#66FFE5D3" StrokeThickness="1" />
+                                        <Ellipse Width="32" Height="32" Margin="-5,31,0,0"
+                                                 Stroke="#55FFE5D3" StrokeThickness="1" />
+                                    </Grid>
+                                </Border>
+
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <StackPanel Margin="0,0,0,5" Orientation="Horizontal">
+                                        <Border Width="13" Height="2" Margin="0,0,7,0"
+                                                VerticalAlignment="Center"
+                                                Background="{StaticResource ExpandedOrangeBrush}"
+                                                CornerRadius="2" />
+                                        <TextBlock Foreground="#E99B75" FontSize="11" Text="当前媒体" />
+                                    </StackPanel>
+                                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding TrackTitle}"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding TrackTitle}" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="11"
+                                               Text="{Binding TrackArtist}"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding TrackArtist}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Margin="0,14,0,0"
+                                        HorizontalAlignment="Center"
+                                        Orientation="Horizontal">
+                                <Button Margin="0,0,8,0"
+                                        Style="{StaticResource MediaButtonStyle}"
+                                        Command="{Binding PreviousCommand}"
+                                        Content="⏮"
+                                        ToolTip="上一首"
+                                        AutomationProperties.Name="上一首" />
+                                <Button Style="{StaticResource PrimaryMediaButtonStyle}"
+                                        Command="{Binding PlayPauseCommand}"
+                                        Content="{Binding PlayPauseGlyph}"
+                                        ToolTip="{Binding PlayPauseCommandText}"
+                                        AutomationProperties.Name="{Binding PlayPauseCommandText}" />
+                                <Button Margin="8,0,0,0"
+                                        Style="{StaticResource MediaButtonStyle}"
+                                        Command="{Binding NextCommand}"
+                                        Content="⏭"
+                                        ToolTip="下一首"
+                                        AutomationProperties.Name="下一首" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid Grid.Row="3" Margin="0,15,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="36" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="28" />
+                        </Grid.ColumnDefinitions>
+
+                        <Button Style="{StaticResource QuietIconButtonStyle}"
+                                Command="{Binding ToggleMuteCommand}"
+                                Content="{Binding MuteCommandText}"
+                                FontSize="9"
+                                ToolTip="{Binding MuteCommandText}"
+                                AutomationProperties.Name="{Binding MuteCommandText}" />
+                        <Slider x:Name="VolumeSlider"
+                                Grid.Column="2"
+                                Minimum="0"
+                                Maximum="100"
+                                IsMoveToPointEnabled="True"
+                                Value="{Binding VolumePercent, Mode=OneWay}"
+                                Style="{StaticResource SoundSliderStyle}"
+                                PreviewMouseLeftButtonUp="HandleVolumeSliderReleased"
+                                PreviewKeyUp="HandleVolumeSliderKeyUp" />
+                        <TextBlock Grid.Column="4"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Right"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontSize="11"
+                                   Text="{Binding VolumePercent, StringFormat={}{0:0}}" />
+                    </Grid>
+
+                    <Border Grid.Row="4"
+                            Margin="0,15,0,0"
+                            Padding="0,14,0,0"
+                            BorderBrush="{StaticResource DividerBrush}"
+                            BorderThickness="0,1,0,0">
+                        <Button Command="{Binding SetAsCurrentOutputCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource OutputButtonStyle}">
+                                    <Setter Property="Content" Value="设为当前音频输出" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCurrentOutput}" Value="True">
+                                            <Setter Property="Content" Value="✓  当前音频输出" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1"
+                    Margin="0,1,1,1"
+                    Background="{StaticResource ExpandedOrangeBrush}"
+                    CornerRadius="0,23,23,0">
+                <Grid Margin="0,10,0,10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Button Style="{StaticResource RailButtonStyle}"
+                            Command="{Binding CollapseCommand}"
+                            Content="‹"
+                            ToolTip="收起"
+                            AutomationProperties.Name="收起组件" />
+
+                    <StackPanel Grid.Row="1"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <Ellipse Width="3" Height="3" Fill="#90211008" />
+                        <Ellipse Width="3" Height="3" Margin="0,4" Fill="#90211008" />
+                        <Ellipse Width="3" Height="3" Fill="#90211008" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2">
+                        <Button Style="{StaticResource RailButtonStyle}"
+                                Command="{Binding ToggleMuteCommand}"
+                                Content="×"
+                                ToolTip="{Binding MuteCommandText}"
+                                AutomationProperties.Name="{Binding MuteCommandText}" />
+                        <Button Margin="0,5,0,0"
+                                Style="{StaticResource RailButtonStyle}"
+                                Command="{Binding OpenSettingsCommand}"
+                                Content="···"
+                                ToolTip="设置"
+                                AutomationProperties.Name="打开设置" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border x:Name="SnapGuide"
+                Margin="2"
+                BorderBrush="#D9F45B16"
+                BorderThickness="0"
+                CornerRadius="20"
+                Opacity="0"
+                IsHitTestVisible="False" />
+    </Grid>
+</Window>
