@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:settings="clr-namespace:SoundPartyCompanion.Core.Settings;assembly=SoundPartyCompanion.Core"
         Title="Sound Party Companion"
+        Icon="pack://application:,,,/SoundPartyCompanion.App;component/Assets/app.ico"
         Width="{Binding WidgetWidth, Mode=OneWay}"
         Height="{Binding WidgetHeight, Mode=OneWay}"
         MinWidth="66"
@@ -32,10 +33,63 @@
         <SolidColorBrush x:Key="TextSecondaryBrush" Color="#AAA49B" />
         <SolidColorBrush x:Key="TextFaintBrush" Color="#746F68" />
         <SolidColorBrush x:Key="CompactOrangeBrush" Color="#9C6044" />
-        <SolidColorBrush x:Key="ExpandedOrangeBrush" Color="#F45B16" />
-        <SolidColorBrush x:Key="OrangeInkBrush" Color="#211008" />
+        <SolidColorBrush x:Key="ExpandedOrangeBrush" Color="#B06B50" />
+        <SolidColorBrush x:Key="OrangeInkBrush" Color="#241815" />
         <SolidColorBrush x:Key="ConnectedBrush" Color="#83A488" />
+        <SolidColorBrush x:Key="LowBatteryBrush" Color="#C79A72" />
+        <SolidColorBrush x:Key="CriticalBatteryBrush" Color="#D29A72" />
         <SolidColorBrush x:Key="DividerBrush" Color="#18F3EFE9" />
+
+        <Style x:Key="BatteryStatusTextStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource LowBatteryBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource CriticalBatteryBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <ControlTemplate x:Key="LowBatteryGlyphTemplate" TargetType="ContentControl">
+            <Grid Width="14" Height="9" IsHitTestVisible="False">
+                <Border Width="11" Height="7"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        BorderBrush="{TemplateBinding Foreground}"
+                        BorderThickness="1"
+                        CornerRadius="2" />
+                <Rectangle Width="1.5" Height="3"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Fill="{TemplateBinding Foreground}"
+                           RadiusX="0.75" RadiusY="0.75" />
+                <Rectangle Width="2" Height="3"
+                           Margin="2,0,0,0"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Center"
+                           Fill="{TemplateBinding Foreground}"
+                           RadiusX="0.75" RadiusY="0.75" />
+            </Grid>
+        </ControlTemplate>
+
+        <Style x:Key="LowBatteryGlyphStyle" TargetType="ContentControl">
+            <Setter Property="Template" Value="{StaticResource LowBatteryGlyphTemplate}" />
+            <Setter Property="Foreground" Value="{StaticResource LowBatteryBrush}" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLowBattery}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsCriticalBattery}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource CriticalBatteryBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
 
         <DrawingBrush x:Key="FabricBrush"
                       TileMode="Tile"
@@ -49,6 +103,47 @@
                 </DrawingGroup>
             </DrawingBrush.Drawing>
         </DrawingBrush>
+
+        <LinearGradientBrush x:Key="ExpandedRailBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Offset="0" Color="#211E1C" />
+            <GradientStop Offset="0.18" Color="#A04E2D" />
+            <GradientStop Offset="0.35" Color="#F45B16" />
+            <GradientStop Offset="1" Color="#F45B16" />
+        </LinearGradientBrush>
+
+        <ControlTemplate x:Key="SpeakerGlyphTemplate" TargetType="ContentControl">
+            <Grid Width="30" Height="40" IsHitTestVisible="False">
+                <Rectangle Width="20" Height="38" RadiusX="6.5" RadiusY="6.5">
+                    <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Offset="0" Color="#4A4B47" />
+                            <GradientStop Offset="0.48" Color="#696A63" />
+                            <GradientStop Offset="1" Color="#555650" />
+                        </LinearGradientBrush>
+                    </Rectangle.Fill>
+                </Rectangle>
+                <Rectangle Width="2.5" Height="28" Margin="0,0,7,0"
+                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                           Fill="#B17758" RadiusX="1.3" RadiusY="1.3" />
+            </Grid>
+        </ControlTemplate>
+
+        <ControlTemplate x:Key="OfflineSpeakerGlyphTemplate" TargetType="ContentControl">
+            <Grid Width="30" Height="40" IsHitTestVisible="False">
+                <Rectangle Width="20" Height="38" RadiusX="6.5" RadiusY="6.5">
+                    <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Offset="0" Color="#353633" />
+                            <GradientStop Offset="0.48" Color="#454640" />
+                            <GradientStop Offset="1" Color="#393A36" />
+                        </LinearGradientBrush>
+                    </Rectangle.Fill>
+                </Rectangle>
+                <Rectangle Width="2.5" Height="28" Margin="0,0,7,0"
+                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                           Fill="#795947" RadiusX="1.3" RadiusY="1.3" />
+            </Grid>
+        </ControlTemplate>
 
         <Style x:Key="QuietIconButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="36" />
@@ -348,7 +443,8 @@
             </TransformGroup>
         </Grid.RenderTransform>
 
-        <Border BorderBrush="{StaticResource DividerBrush}"
+        <Border x:Name="WidgetChrome"
+                BorderBrush="{StaticResource DividerBrush}"
                 BorderThickness="1"
                 Background="{StaticResource CarbonBrush}">
             <Border.Style>
@@ -364,18 +460,13 @@
                     </Style.Triggers>
                 </Style>
             </Border.Style>
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="30"
-                                  ShadowDepth="8"
-                                  Opacity="0.31"
-                                  Color="#000000" />
-            </Border.Effect>
         </Border>
 
         <!-- 离线：保持可找到，但不持续争夺注意力。 -->
         <Grid x:Name="OfflinePanel"
               Cursor="Hand"
-              ToolTip="点击查看连接状态 · 拖动移动">
+              ToolTip="{Binding StatusText}"
+              AutomationProperties.Name="{Binding StatusText}">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -388,34 +479,8 @@
                     </Style.Triggers>
                 </Style>
             </Grid.Style>
-            <Grid Width="30" Height="36">
-                <Rectangle Width="15"
-                           Height="25"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Fill="#343330"
-                           RadiusX="7"
-                           RadiusY="7" />
-                <Rectangle Width="3"
-                           Height="17"
-                           Margin="0,0,2,0"
-                           HorizontalAlignment="Right"
-                           VerticalAlignment="Top"
-                           Fill="#6E4A3A"
-                           RadiusX="1.5"
-                           RadiusY="1.5" />
-                <Ellipse Width="5"
-                         Height="5"
-                         Margin="0,0,1,3"
-                         HorizontalAlignment="Right"
-                         VerticalAlignment="Bottom"
-                         Fill="#8A543E" />
-            </Grid>
-            <Border Width="3"
-                    Height="21"
-                    HorizontalAlignment="Right"
-                    Background="#5D3E31"
-                    CornerRadius="3,0,0,3" />
+            <ContentControl Width="30" Height="40"
+                            Template="{StaticResource OfflineSpeakerGlyphTemplate}" />
         </Grid>
 
         <!-- 离线详情：仅解释本地状态；系统导航必须显式触发。 -->
@@ -443,20 +508,8 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="30" />
                 </Grid.ColumnDefinitions>
-                <Border Width="38"
-                        Height="38"
-                        Background="{StaticResource RaisedBrush}"
-                        CornerRadius="13">
-                    <Grid>
-                        <Rectangle Width="14" Height="24" Fill="#3A3936" RadiusX="7" RadiusY="7" />
-                        <Rectangle Width="3" Height="17" Margin="0,0,6,0"
-                                   HorizontalAlignment="Right" VerticalAlignment="Top"
-                                   Fill="{StaticResource CompactOrangeBrush}" RadiusX="1.5" RadiusY="1.5" />
-                        <Ellipse Width="5" Height="5" Margin="0,0,5,5"
-                                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                 Fill="{StaticResource CompactOrangeBrush}" />
-                    </Grid>
-                </Border>
+                <ContentControl Width="30" Height="40"
+                                Template="{StaticResource OfflineSpeakerGlyphTemplate}" />
                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
                     <TextBlock FontSize="14"
                                FontWeight="SemiBold"
@@ -523,30 +576,20 @@
                 </Style>
             </Grid.Style>
             <Grid.RowDefinitions>
-                <RowDefinition Height="38" />
+                <RowDefinition Height="40" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="38" />
-                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="30" />
+                    <ColumnDefinition Width="10" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border Width="38"
-                        Height="38"
-                        Background="{StaticResource RaisedBrush}"
-                        CornerRadius="13">
-                    <Grid>
-                        <Rectangle Width="13" Height="23" Fill="#3A3936" RadiusX="6.5" RadiusY="6.5" />
-                        <Rectangle Width="3" Height="19" Margin="0,0,5,0"
-                                   HorizontalAlignment="Right"
-                                   Fill="{StaticResource CompactOrangeBrush}"
-                                   RadiusX="1.5" RadiusY="1.5" />
-                    </Grid>
-                </Border>
+                <ContentControl Width="30" Height="40"
+                                Template="{StaticResource SpeakerGlyphTemplate}" />
 
                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
                     <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
@@ -567,10 +610,10 @@
                             Orientation="Horizontal">
                     <Ellipse Width="6" Height="6" Margin="0,0,6,0"
                              Fill="{StaticResource ConnectedBrush}" />
-                    <TextBlock VerticalAlignment="Center"
-                               Foreground="{StaticResource TextSecondaryBrush}"
-                               FontSize="11"
-                               Text="{Binding BatteryText}"
+                    <ContentControl Margin="0,0,5,0"
+                                    Style="{StaticResource LowBatteryGlyphStyle}" />
+                    <TextBlock Style="{StaticResource BatteryStatusTextStyle}"
+                               Text="{Binding BatteryDisplayText}"
                                ToolTip="{Binding BatteryDetailText}" />
                 </StackPanel>
             </Grid>
@@ -608,7 +651,7 @@
                     CornerRadius="3,0,0,3" />
         </Grid>
 
-        <!-- 展开：增强织物层次，并显示亮橙控制带。 -->
+        <!-- 展开：增强织物层次，并显示陶土橙控制带。 -->
         <Grid x:Name="ExpandedPanel" ClipToBounds="True">
             <Grid.Style>
                 <Style TargetType="Grid">
@@ -641,24 +684,14 @@
 
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="38" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="30" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Width="38"
-                                Height="38"
-                                Background="{StaticResource RaisedBrush}"
-                                CornerRadius="13">
-                            <Grid>
-                                <Rectangle Width="13" Height="23" Fill="#3A3936" RadiusX="6.5" RadiusY="6.5" />
-                                <Rectangle Width="3" Height="19" Margin="0,0,5,0"
-                                           HorizontalAlignment="Right"
-                                           Fill="{StaticResource CompactOrangeBrush}"
-                                           RadiusX="1.5" RadiusY="1.5" />
-                            </Grid>
-                        </Border>
+                        <ContentControl Width="30" Height="40"
+                                        Template="{StaticResource SpeakerGlyphTemplate}" />
 
                         <StackPanel Grid.Column="2" VerticalAlignment="Center">
                             <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
@@ -679,10 +712,10 @@
                                     Orientation="Horizontal">
                             <Ellipse Width="6" Height="6" Margin="0,0,6,0"
                                      Fill="{StaticResource ConnectedBrush}" />
-                            <TextBlock VerticalAlignment="Center"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                       FontSize="11"
-                                       Text="{Binding BatteryText}"
+                            <ContentControl Margin="0,0,5,0"
+                                            Style="{StaticResource LowBatteryGlyphStyle}" />
+                            <TextBlock Style="{StaticResource BatteryStatusTextStyle}"
+                                       Text="{Binding BatteryDisplayText}"
                                        ToolTip="{Binding BatteryDetailText}" />
                         </StackPanel>
                     </Grid>
@@ -739,9 +772,9 @@
                                 <Border Width="52" Height="52" CornerRadius="16">
                                     <Border.Background>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Offset="0" Color="#E76227" />
-                                            <GradientStop Offset="0.55" Color="#A33F1E" />
-                                            <GradientStop Offset="1" Color="#4B2016" />
+                                            <GradientStop Offset="0" Color="#C77A55" />
+                                            <GradientStop Offset="0.55" Color="#9E5136" />
+                                            <GradientStop Offset="1" Color="#4B2D25" />
                                         </LinearGradientBrush>
                                     </Border.Background>
                                     <Grid ClipToBounds="True">
@@ -758,7 +791,7 @@
                                                 VerticalAlignment="Center"
                                                 Background="{StaticResource ExpandedOrangeBrush}"
                                                 CornerRadius="2" />
-                                        <TextBlock Foreground="#E99B75" FontSize="11" Text="当前媒体" />
+                                        <TextBlock Foreground="#C98B71" FontSize="11" Text="当前媒体" />
                                     </StackPanel>
                                     <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
                                                FontSize="14"
@@ -854,7 +887,7 @@
 
             <Border Grid.Column="1"
                     Margin="0,1,1,1"
-                    Background="{StaticResource ExpandedOrangeBrush}"
+                    Background="{StaticResource ExpandedRailBrush}"
                     CornerRadius="0,23,23,0">
                 <Grid Margin="0,10,0,10">
                     <Grid.RowDefinitions>
@@ -869,26 +902,80 @@
                             ToolTip="收起"
                             AutomationProperties.Name="收起组件" />
 
-                    <StackPanel Grid.Row="1"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center">
-                        <Ellipse Width="3" Height="3" Fill="#90211008" />
-                        <Ellipse Width="3" Height="3" Margin="0,4" Fill="#90211008" />
-                        <Ellipse Width="3" Height="3" Fill="#90211008" />
-                    </StackPanel>
+                    <TextBlock x:Name="RailBrandLabel" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsHitTestVisible="False" Foreground="#241815" FontSize="11" FontWeight="Medium"
+                               FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True"
+                               TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="Grayscale"
+                               Text="S O U N D  P A R T Y">
+                        <TextBlock.LayoutTransform>
+                            <RotateTransform Angle="90" />
+                        </TextBlock.LayoutTransform>
+                    </TextBlock>
 
                     <StackPanel Grid.Row="2">
-                        <Button Style="{StaticResource RailButtonStyle}"
-                                Command="{Binding ToggleMuteCommand}"
-                                Content="×"
+                        <Button Command="{Binding ToggleMuteCommand}"
                                 ToolTip="{Binding MuteCommandText}"
-                                AutomationProperties.Name="{Binding MuteCommandText}" />
+                                AutomationProperties.Name="{Binding MuteCommandText}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource RailButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                            <Setter Property="Background" Value="#30F3EFE9" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <Canvas Width="20" Height="20" IsHitTestVisible="False">
+                                <Path Data="M2,8 L6,8 11,4 11,16 6,12 2,12 Z"
+                                      Stroke="{StaticResource OrangeInkBrush}"
+                                      StrokeThickness="1.6"
+                                      StrokeLineJoin="Round" />
+                                <Path Data="M13,7 C15,8.3 15,11.7 13,13 M15,5 C18,7.4 18,12.6 15,15"
+                                      Stroke="{StaticResource OrangeInkBrush}"
+                                      StrokeThickness="1.5"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                                <Path Data="M14,7 L19,12 M19,7 L14,12"
+                                      Stroke="{StaticResource OrangeInkBrush}"
+                                      StrokeThickness="1.8"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                            </Canvas>
+                        </Button>
                         <Button Margin="0,5,0,0"
                                 Style="{StaticResource RailButtonStyle}"
                                 Command="{Binding OpenSettingsCommand}"
-                                Content="···"
                                 ToolTip="设置"
-                                AutomationProperties.Name="打开设置" />
+                                AutomationProperties.Name="打开设置">
+                            <Canvas Width="20" Height="20" IsHitTestVisible="False">
+                                <Line X1="2" Y1="6" X2="18" Y2="6" Stroke="{StaticResource OrangeInkBrush}" StrokeThickness="1.6" />
+                                <Line X1="2" Y1="14" X2="18" Y2="14" Stroke="{StaticResource OrangeInkBrush}" StrokeThickness="1.6" />
+                                <Ellipse Canvas.Left="5" Canvas.Top="4" Width="4" Height="4" Fill="{StaticResource OrangeInkBrush}" />
+                                <Ellipse Canvas.Left="12" Canvas.Top="12" Width="4" Height="4" Fill="{StaticResource OrangeInkBrush}" />
+                            </Canvas>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -896,7 +983,7 @@
 
         <Border x:Name="SnapGuide"
                 Margin="2"
-                BorderBrush="#D9F45B16"
+                BorderBrush="#D9B06B50"
                 BorderThickness="0"
                 CornerRadius="20"
                 Opacity="0"

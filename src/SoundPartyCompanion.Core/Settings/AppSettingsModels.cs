@@ -32,7 +32,9 @@ public sealed record AppSettings(
     bool HandsFreeAdvanced,
     bool ExperimentalProtocol,
     bool ManualCollapsed,
-    NormalizedWindowPlacement? WindowPlacement)
+    NormalizedWindowPlacement? WindowPlacement,
+    int? LowBatteryLastObservedPercent,
+    int LowBatteryNotifiedThresholds)
 {
     public static AppSettings Default { get; } = new(
         StartWithWindows: true,
@@ -43,7 +45,9 @@ public sealed record AppSettings(
         HandsFreeAdvanced: false,
         ExperimentalProtocol: false,
         ManualCollapsed: false,
-        WindowPlacement: null);
+        WindowPlacement: null,
+        LowBatteryLastObservedPercent: null,
+        LowBatteryNotifiedThresholds: 0);
 }
 
 public static class AppSettingsRules
@@ -60,7 +64,9 @@ public static class AppSettingsRules
         return settings with
         {
             Opacity = NormalizeOpacity(settings.Opacity),
-            WindowPlacement = NormalizePlacement(settings.WindowPlacement)
+            WindowPlacement = NormalizePlacement(settings.WindowPlacement),
+            LowBatteryLastObservedPercent = NormalizeBatteryPercent(settings.LowBatteryLastObservedPercent),
+            LowBatteryNotifiedThresholds = settings.LowBatteryNotifiedThresholds & 0b11
         };
     }
 
@@ -92,6 +98,9 @@ public static class AppSettingsRules
 
     private static double NormalizeCoordinate(double value) =>
         double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
+
+    private static int? NormalizeBatteryPercent(int? value) =>
+        value is >= 0 and <= 100 ? value : null;
 }
 
 public sealed record WindowWorkArea(

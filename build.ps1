@@ -23,6 +23,10 @@ if (-not (Test-Path -LiteralPath $dotnetPath)) {
 $env:DOTNET_CLI_HOME = Join-Path $projectRoot '.tools\dotnet-home'
 $env:NUGET_PACKAGES = Join-Path $projectRoot '.packages'
 $env:DOTNET_NOLOGO = '1'
+$env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
+$env:TEMP = Join-Path $projectRoot 'artifacts\release-prep\0.1.1\temp'
+$env:TMP = $env:TEMP
+New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
 $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
 
 function Invoke-DotNet {

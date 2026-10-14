@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using MenuItem = System.Windows.Controls.MenuItem;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;

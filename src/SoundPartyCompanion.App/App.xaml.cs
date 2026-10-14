@@ -1,5 +1,7 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
 using SoundPartyCompanion.App.Infrastructure;
@@ -27,6 +29,8 @@ public partial class App : System.Windows.Application
     private TrayIconService? _trayIcon;
     private bool _activationPending;
     private bool _exiting;
+    private bool _exportingDiagnostics;
+    private string? _logDirectory;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -43,7 +47,8 @@ public partial class App : System.Windows.Application
         var appDataDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SoundPartyCompanion");
-        _logger = new RollingFileLogger(Path.Combine(appDataDirectory, "Logs"));
+        _logDirectory = Path.Combine(appDataDirectory, "Logs");
+        _logger = new RollingFileLogger(_logDirectory);
         DispatcherUnhandledException += HandleDispatcherException;
         AppDomain.CurrentDomain.UnhandledException += HandleDomainException;
         TaskScheduler.UnobservedTaskException += HandleTaskException;
@@ -81,6 +86,8 @@ public partial class App : System.Windows.Application
         _connectionViewModel.SettingsRequested += HandleSettingsRequested;
         _connectionViewModel.PresentationSettingsChanged += HandlePresentationSettingsChanged;
         _connectionViewModel.BluetoothSettingsRequested += HandleBluetoothSettingsRequested;
+        _connectionViewModel.LowBatteryReminderRequested += HandleLowBatteryReminderRequested;
+        _connectionViewModel.PropertyChanged += HandleConnectionViewModelPropertyChanged;
 
         _widgetWindow = new MainWindow(_connectionViewModel, new WindowPlacementService());
         MainWindow = _widgetWindow;
@@ -95,8 +102,10 @@ public partial class App : System.Windows.Application
         _trayIcon = new TrayIconService(
             ToggleWidgetVisibility,
             value => _connectionViewModel.SetAlwaysOnTop(value),
+            () => _connectionViewModel.SetAsCurrentOutputCommand.Execute(null),
             ShowSettings,
             OpenBluetoothSettings,
+            ExportDiagnostics,
             ExitApplication);
         UpdateTrayIcon();
 
@@ -111,6 +120,7 @@ public partial class App : System.Windows.Application
             await selectionStore.SaveAsync(selection);
         }
         await _connectionMonitor.StartAsync(selection);
+        _connectionViewModel.CheckLowBatteryReminder();
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -124,6 +134,8 @@ public partial class App : System.Windows.Application
             _connectionViewModel.SettingsRequested -= HandleSettingsRequested;
             _connectionViewModel.PresentationSettingsChanged -= HandlePresentationSettingsChanged;
             _connectionViewModel.BluetoothSettingsRequested -= HandleBluetoothSettingsRequested;
+            _connectionViewModel.LowBatteryReminderRequested -= HandleLowBatteryReminderRequested;
+            _connectionViewModel.PropertyChanged -= HandleConnectionViewModelPropertyChanged;
             _connectionViewModel.Dispose();
         }
         if (_connectionMonitor is not null)
@@ -177,6 +189,70 @@ public partial class App : System.Windows.Application
         Process.Start(new ProcessStartInfo("ms-settings:bluetooth") { UseShellExecute = true });
     }
 
+    private async void ExportDiagnostics()
+    {
+        if (_exportingDiagnostics || _exiting || _logDirectory is null ||
+            _connectionMonitor is null || _connectionViewModel is null || _widgetWindow is null) return;
+        _exportingDiagnostics = true;
+        _trayIcon?.SetDiagnosticExportEnabled(false);
+        var owner = _settingsWindow is { IsVisible: true } ? _settingsWindow : (Window)_widgetWindow;
+        try
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "导出本地脱敏诊断包（不会上传）",
+                Filter = "诊断 ZIP 文件 (*.zip)|*.zip",
+                DefaultExt = ".zip",
+                AddExtension = true,
+                FileName = $"SoundPartyCompanion-Diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.zip",
+                InitialDirectory = Directory.Exists(@"E:\") ? @"E:\" : AppContext.BaseDirectory,
+                OverwritePrompt = false,
+                CheckPathExists = true
+            };
+            if (dialog.ShowDialog(owner) != true) return;
+            if (File.Exists(dialog.FileName))
+            {
+                System.Windows.MessageBox.Show(owner, "该文件已存在。为保护原文件，请重新导出并使用不同文件名。",
+                    "导出诊断", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var connection = _connectionMonitor.Current;
+            var hasAudioControl = _connectionViewModel.ToggleMuteCommand.CanExecute(null);
+            var snapshot = new DiagnosticExportSnapshot(
+                typeof(App).Assembly.GetName().Version ?? new Version(0, 1, 0),
+                Environment.OSVersion.Version,
+                RuntimeInformation.ProcessArchitecture,
+                connection.State,
+                connection.Battery.Percent,
+                connection.Battery.IsStale,
+                connection.Battery.ObservedAt,
+                hasAudioControl ? _connectionViewModel.VolumePercent : null,
+                hasAudioControl ? _connectionViewModel.IsMuted : null);
+            var logDirectory = _logDirectory;
+            var destination = dialog.FileName;
+            var result = await Task.Run(() => new DiagnosticExportService().ExportAsync(logDirectory, destination, snapshot));
+            _logger?.Write(AppLogLevel.Information, "Diagnostic export completed.");
+            if (_exiting) return;
+            var summary = result.SkippedLogs > 0
+                ? $"已导出 {result.IncludedLogs} 份脱敏日志；{result.SkippedLogs} 份不可读日志已跳过。"
+                : $"已导出 {result.IncludedLogs} 份脱敏日志与基础状态。";
+            System.Windows.MessageBox.Show(owner, summary + "\n文件仅保存在你选择的位置，分享前请检查内容。",
+                "导出诊断完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            _logger?.Write(AppLogLevel.Warning, $"Diagnostic export failed ({exception.GetType().Name}).");
+            if (!_exiting)
+                System.Windows.MessageBox.Show(owner, "导出未完成，请选择可写位置和未使用的文件名后重试。基础功能不受影响。",
+                    "导出诊断", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _exportingDiagnostics = false;
+            _trayIcon?.SetDiagnosticExportEnabled(true);
+        }
+    }
+
     private void ExitApplication()
     {
         if (_exiting) return;
@@ -194,14 +270,52 @@ public partial class App : System.Windows.Application
 
     private void HandleBluetoothSettingsRequested(object? sender, EventArgs e) => OpenBluetoothSettings();
 
+    private void HandleLowBatteryReminderRequested(object? sender, LowBatteryReminderEventArgs e)
+    {
+        _trayIcon?.ShowLowBatteryReminder(
+            _connectionViewModel?.DeviceName ?? "Xiaomi蓝牙音箱Pro",
+            e.Percent,
+            e.Threshold);
+    }
+
     private void HandlePresentationSettingsChanged(object? sender, EventArgs e) => UpdateTrayIcon();
+
+    private void HandleConnectionViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ConnectionStatusViewModel.DeviceName)
+            or nameof(ConnectionStatusViewModel.StatusText)
+            or nameof(ConnectionStatusViewModel.BatteryText)
+            or nameof(ConnectionStatusViewModel.BatteryDetailText)
+            or nameof(ConnectionStatusViewModel.HasBattery)
+            or nameof(ConnectionStatusViewModel.IsConnected)
+            or nameof(ConnectionStatusViewModel.IsCurrentOutput)
+            or nameof(ConnectionStatusViewModel.AudioSummaryText))
+        {
+            UpdateTrayIcon();
+        }
+    }
 
     private void HandleWidgetVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e) => UpdateTrayIcon();
 
     private void UpdateTrayIcon()
     {
+        if (!Dispatcher.CheckAccess())
+        {
+            _ = Dispatcher.InvokeAsync(UpdateTrayIcon);
+            return;
+        }
         if (_widgetWindow is null || _connectionViewModel is null) return;
-        _trayIcon?.Update(_widgetWindow.IsVisible, _connectionViewModel.AlwaysOnTop);
+        _trayIcon?.Update(new TrayMenuState(
+            _widgetWindow.IsVisible,
+            _connectionViewModel.AlwaysOnTop,
+            _connectionViewModel.DeviceName,
+            _connectionViewModel.StatusText,
+            _connectionViewModel.BatteryText,
+            _connectionViewModel.BatteryDetailText,
+            _connectionViewModel.HasBattery,
+            _connectionViewModel.IsConnected,
+            _connectionViewModel.IsCurrentOutput,
+            _connectionViewModel.SetAsCurrentOutputCommand.CanExecute(null)));
     }
 
     private void HandleDispatcherException(object sender, DispatcherUnhandledExceptionEventArgs e)

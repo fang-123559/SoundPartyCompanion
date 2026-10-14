@@ -43,8 +43,15 @@ public sealed class RollingFileLogger : IAppLogger
         var entry = FormatEntry(level, message, exception);
         lock (_sync)
         {
-            RotateIfRequired(Encoding.UTF8.GetByteCount(entry));
-            File.AppendAllText(_logFilePath, entry, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            try
+            {
+                RotateIfRequired(Encoding.UTF8.GetByteCount(entry));
+                File.AppendAllText(_logFilePath, entry, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            }
+            catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+            {
+                // Logging is best-effort: disk/permission failures must not terminate basic controls.
+            }
         }
     }
 
@@ -55,13 +62,15 @@ public sealed class RollingFileLogger : IAppLogger
             .Append(" [")
             .Append(level)
             .Append("] ")
-            .AppendLine(message.ReplaceLineEndings(" "));
+            .Append(LogPrivacyFilter.RedactText(message.ReplaceLineEndings(" ")));
 
         if (exception is not null)
         {
-            builder.AppendLine(exception.ToString());
+            // Exception messages, stack source paths and Data may contain private user content.
+            builder.Append(" ExceptionType=").Append(exception.GetType().Name)
+                .Append("; HResult=0x").Append(exception.HResult.ToString("X8"));
         }
-
+        builder.AppendLine();
         return builder.ToString();
     }
 

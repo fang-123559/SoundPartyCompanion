@@ -8,6 +8,12 @@ using SoundPartyCompanion.Core.Settings;
 
 namespace SoundPartyCompanion.App.ViewModels;
 
+public sealed class LowBatteryReminderEventArgs(int percent, int threshold) : EventArgs
+{
+    public int Percent { get; } = percent;
+    public int Threshold { get; } = threshold;
+}
+
 public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly IConnectionMonitor _monitor;
@@ -45,6 +51,10 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
     private bool _isConnected;
     private bool _hasMediaSession;
     private bool _hasBattery;
+    private bool _isLowBattery;
+    private bool _isCriticalBattery;
+    private string _batteryDisplayText = "--";
+    private bool _batteryReminderInitialized;
     private bool _disposed;
 
     public ConnectionStatusViewModel(
@@ -90,6 +100,7 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
     public event EventHandler? WindowPositionResetRequested;
     public event EventHandler? PresentationSettingsChanged;
     public event EventHandler? BluetoothSettingsRequested;
+    public event EventHandler<LowBatteryReminderEventArgs>? LowBatteryReminderRequested;
 
     public string DeviceName { get => _deviceName; private set => SetField(ref _deviceName, value); }
     public string StatusText { get => _statusText; private set => SetField(ref _statusText, value); }
@@ -121,6 +132,9 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
     public double VolumePercent { get => _volumePercent; private set => SetField(ref _volumePercent, value); }
     public double BatteryPercent { get => _batteryPercent; private set => SetField(ref _batteryPercent, value); }
     public bool HasBattery { get => _hasBattery; private set => SetField(ref _hasBattery, value); }
+    public bool IsLowBattery { get => _isLowBattery; private set => SetField(ref _isLowBattery, value); }
+    public bool IsCriticalBattery { get => _isCriticalBattery; private set => SetField(ref _isCriticalBattery, value); }
+    public string BatteryDisplayText { get => _batteryDisplayText; private set => SetField(ref _batteryDisplayText, value); }
 
     public WidgetDisplayMode WidgetMode
     {
@@ -217,6 +231,12 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
     {
         await _monitor.RefreshAsync(cancellationToken);
         await RunOnUiAsync(() => ApplySnapshot(_monitor.Current));
+    }
+
+    public void CheckLowBatteryReminder()
+    {
+        var snapshot = _monitor.Current;
+        EvaluateLowBatteryReminder(snapshot.Battery, snapshot.IsConnected);
     }
 
     public Task ActivateWidgetAsync()
@@ -366,9 +386,16 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
 
     private void ApplyBattery(SpeakerBatterySnapshot battery, bool isConnected)
     {
+        EvaluateLowBatteryReminder(battery, isConnected);
         HasBattery = battery.Percent.HasValue;
         BatteryPercent = battery.Percent ?? 0;
         BatteryText = battery.Percent is int percent ? $"{percent}%" : "--";
+        var hasFreshOnlineBattery = isConnected && !battery.IsStale && battery.Percent.HasValue;
+        IsCriticalBattery = hasFreshOnlineBattery && battery.Percent <= LowBatteryReminderRules.CriticalThreshold;
+        IsLowBattery = hasFreshOnlineBattery && battery.Percent <= LowBatteryReminderRules.WarningThreshold;
+        BatteryDisplayText = battery.Percent is int displayPercent
+            ? $"{displayPercent}%"
+            : "--";
 
         if (battery.ObservedAt is not DateTimeOffset observedAt)
         {
@@ -384,6 +411,39 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
                 ? $"Windows HFP · {localTime} 采集 · 已过期"
                 : $"上次电量 · {localTime} 采集 · 音箱已离线"
             : $"Windows HFP · {localTime} 更新";
+    }
+
+    private void EvaluateLowBatteryReminder(SpeakerBatterySnapshot battery, bool isConnected)
+    {
+        if (!isConnected || battery.IsStale || battery.Percent is not int percent)
+        {
+            return;
+        }
+
+        var state = new LowBatteryReminderState(
+            _settings.LowBatteryLastObservedPercent,
+            _settings.LowBatteryNotifiedThresholds);
+        var decision = LowBatteryReminderRules.Evaluate(
+            state,
+            percent,
+            enabled: _batteryReminderInitialized && _settings.LowBatteryNotifications);
+        _batteryReminderInitialized = true;
+
+        if (decision.State != state)
+        {
+            UpdateSettings(_settings with
+            {
+                LowBatteryLastObservedPercent = decision.State.LastObservedPercent,
+                LowBatteryNotifiedThresholds = decision.State.NotifiedThresholds
+            }, propertyName: null);
+        }
+
+        if (decision.Threshold is int threshold)
+        {
+            LowBatteryReminderRequested?.Invoke(
+                this,
+                new LowBatteryReminderEventArgs(percent, threshold));
+        }
     }
 
     private void UpdateWidgetMode() => WidgetMode = WidgetStateRules.Resolve(

@@ -3,6 +3,8 @@ using System.Windows.Threading;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Media;
 using SoundPartyCompanion.App;
 using SoundPartyCompanion.App.Infrastructure;
@@ -47,29 +49,38 @@ public sealed class WidgetWindowLifecycleTests
 
     private static void RunLifecycle()
     {
-        SoundPartyCompanion.App.App? application = null;
+        System.Windows.Application? application = null;
         ConnectionStatusViewModel? viewModel = null;
         MainWindow? window = null;
         SettingsWindow? settingsWindow = null;
         try
         {
-            application = new SoundPartyCompanion.App.App();
-            application.InitializeComponent();
+            application = new System.Windows.Application
+            {
+                ShutdownMode = ShutdownMode.OnExplicitShutdown
+            };
             var monitor = new FakeConnectionMonitor(Snapshot(SpeakerConnectionState.PairedOffline));
             var mediaController = new FakeMediaController();
+            var settingsStore = new MemorySettingsStore();
             viewModel = new ConnectionStatusViewModel(
                 monitor,
                 new FakeAudioController(),
                 mediaController,
-                new MemorySettingsStore(),
+                settingsStore,
                 new FakeStartupManager(),
                 AppSettings.Default with { StartWithWindows = false });
-            window = new MainWindow(viewModel, new WindowPlacementService()) { ShowActivated = false };
+            window = new MainWindow(viewModel, new WindowPlacementService());
+            application.MainWindow = window;
 
             window.Show();
             PumpDispatcher();
+            Assert.NotNull(window.Icon);
+            Assert.False(window.ShowInTaskbar);
             AssertState(window, viewModel, WidgetDisplayMode.Offline, 66, 66);
+            Assert.Null(((Border)window.FindName("WidgetChrome")).Effect);
+            Assert.True(window.IsVisible, "Widget must be visible before context-menu inspection.");
             AssertContextMenuHeaders(window, "重新检测连接", "打开蓝牙设置", "设置");
+            Assert.True(window.IsVisible, "Widget must remain visible after its context menu closes.");
 
             var bluetoothSettingsRequests = 0;
             viewModel.BluetoothSettingsRequested += (_, _) => bluetoothSettingsRequests++;
@@ -93,11 +104,21 @@ public sealed class WidgetWindowLifecycleTests
             viewModel.ActivateWidgetAsync().GetAwaiter().GetResult();
             PumpDispatcherFor(TimeSpan.FromMilliseconds(320));
             AssertState(window, viewModel, WidgetDisplayMode.Expanded, 388, 250);
+            var railBrand = (TextBlock)window.FindName("RailBrandLabel");
+            Assert.Equal(11, railBrand.FontSize);
+            Assert.Equal(FontWeights.Medium, railBrand.FontWeight);
+            Assert.Equal(byte.MaxValue, ((SolidColorBrush)railBrand.Foreground).Color.A);
+            Assert.False(railBrand.IsHitTestVisible);
+            Assert.Equal(90, ((RotateTransform)railBrand.LayoutTransform).Angle);
             Assert.Equal(Visibility.Collapsed, ((Border)window.FindName("ActiveMediaPanel")).Visibility);
             Assert.Equal("收起组件", AutomationProperties.GetName(
                 FindVisualDescendants<Button>(window).Single(button => Equals(button.Content, "‹"))));
             Assert.Equal("打开设置", AutomationProperties.GetName(
-                FindVisualDescendants<Button>(window).Single(button => Equals(button.Content, "···"))));
+                FindVisualDescendants<Button>(window).Single(button =>
+                    AutomationProperties.GetName(button) == "打开设置")));
+            Assert.Contains(
+                FindVisualDescendants<Button>(window),
+                button => AutomationProperties.GetName(button) == "静音" && button.Content is Canvas);
             AssertContextMenuHeaders(window, "收起", "上一首", "播放", "下一首", "音量 +5",
                 "音量 -5", "静音", "设为当前输出", "重新检测连接", "打开蓝牙设置", "设置");
 
@@ -144,7 +165,7 @@ public sealed class WidgetWindowLifecycleTests
             };
             settingsWindow.Show();
             PumpDispatcher();
-            AssertSettingsWindowLayout(settingsWindow);
+            AssertSettingsWindowLayout(settingsWindow, viewModel, settingsStore);
         }
         finally
         {
@@ -159,35 +180,150 @@ public sealed class WidgetWindowLifecycleTests
         }
     }
 
-    private static void AssertSettingsWindowLayout(SettingsWindow settingsWindow)
+    private static void AssertSettingsWindowLayout(
+        SettingsWindow settingsWindow,
+        ConnectionStatusViewModel viewModel,
+        MemorySettingsStore settingsStore)
     {
         settingsWindow.UpdateLayout();
+        Assert.NotNull(settingsWindow.Icon);
+        Assert.Equal(settingsWindow.Owner!.Icon.ToString(), settingsWindow.Icon.ToString());
+        Assert.True(settingsWindow.ShowInTaskbar);
+        var surface = (Border)settingsWindow.FindName("SettingsSurface");
+        Assert.Equal(388, surface.ActualWidth);
+        Assert.Equal(448, surface.ActualHeight);
         var scrollViewer = FindVisualDescendants<ScrollViewer>(settingsWindow).Single(viewer =>
             viewer.Name == "SettingsScrollViewer");
-        var footerButton = FindVisualDescendants<Button>(settingsWindow).Single(button =>
-            Equals(button.Content, "完成"));
+        var closeButton = (Button)settingsWindow.FindName("CloseSettingsButton");
+        var saveHint = (TextBlock)settingsWindow.FindName("SettingsSaveHint");
         var scrollBar = FindVisualDescendants<ScrollBar>(scrollViewer).Single(bar =>
             bar.Orientation == Orientation.Vertical);
-        var thumb = FindVisualDescendants<Thumb>(scrollBar).Single();
-        var footerY = footerButton.TranslatePoint(new System.Windows.Point(), settingsWindow).Y;
+        var closeY = closeButton.TranslatePoint(new System.Windows.Point(), settingsWindow).Y;
 
-        Assert.True(scrollViewer.ScrollableHeight > 0);
+        AssertNoCapabilitySection(settingsWindow);
+        Assert.InRange(scrollViewer.ScrollableHeight, 0, 0.1);
+        AssertSettingsContentSpacing(settingsWindow);
+        Assert.DoesNotContain(FindVisualDescendants<Button>(settingsWindow), button => Equals(button.Content, "完成"));
+        Assert.Equal("关闭设置", AutomationProperties.GetName(closeButton));
+        Assert.Equal("本地设置 · 自动保存", saveHint.Text);
+        AssertSettingsBindings(settingsWindow, viewModel, settingsStore);
+
+        settingsWindow.Height = 408;
+        settingsWindow.UpdateLayout();
+        Assert.True(scrollViewer.ScrollableHeight > 0, "A reduced viewport must scroll instead of clipping settings.");
+        Assert.Equal(Visibility.Visible, scrollBar.Visibility);
+        var thumb = FindVisualDescendants<Thumb>(scrollBar).Single();
         Assert.Equal(10, scrollBar.Width);
         Assert.Equal(6, thumb.Width);
         Assert.Empty(FindVisualDescendants<System.Windows.Shapes.Path>(scrollBar));
+        var footerY = saveHint.TranslatePoint(new System.Windows.Point(), settingsWindow).Y;
 
         scrollViewer.ScrollToEnd();
         settingsWindow.UpdateLayout();
-        var footerAfterScrollY = footerButton.TranslatePoint(new System.Windows.Point(), settingsWindow).Y;
+        var footerAfterScrollY = saveHint.TranslatePoint(new System.Windows.Point(), settingsWindow).Y;
         Assert.InRange(Math.Abs(footerAfterScrollY - footerY), 0, 0.1);
-        Assert.True(footerButton.IsVisible);
+        Assert.InRange(Math.Abs(closeButton.TranslatePoint(new System.Windows.Point(), settingsWindow).Y - closeY), 0, 0.1);
+        Assert.True(saveHint.IsVisible);
+        Assert.True(closeButton.IsVisible);
+
+        Assert.True(saveHint.TranslatePoint(new System.Windows.Point(), settingsWindow).Y + saveHint.ActualHeight <= surface.Margin.Top + surface.ActualHeight);
+        settingsWindow.Height = 476;
+        settingsWindow.UpdateLayout();
+        Assert.InRange(scrollViewer.ScrollableHeight, 0, 0.1);
+        Assert.InRange(scrollViewer.VerticalOffset, 0, 0.1);
+        AssertSettingsContentSpacing(settingsWindow);
+
+        ((IInvokeProvider)new ButtonAutomationPeer(closeButton).GetPattern(PatternInterface.Invoke)).Invoke();
+        PumpDispatcher();
+        Assert.False(settingsWindow.IsVisible);
+        var reopened = new SettingsWindow(viewModel) { Owner = settingsWindow.Owner, ShowActivated = false };
+        try
+        {
+            reopened.Show();
+            PumpDispatcher();
+            AssertNoCapabilitySection(reopened);
+            AssertSettingsContentSpacing(reopened);
+            Assert.Equal(viewModel.LowBatteryNotifications, ((CheckBox)reopened.FindName("LowBatteryToggle")).IsChecked);
+        }
+        finally
+        {
+            reopened.Close();
+        }
+    }
+
+    private static void AssertSettingsContentSpacing(SettingsWindow settingsWindow)
+    {
+        settingsWindow.UpdateLayout();
+        var hint = (TextBlock)settingsWindow.FindName("LowBatteryHint");
+        var footer = (Border)settingsWindow.FindName("SettingsFooter");
+        var scrollViewer = (ScrollViewer)settingsWindow.FindName("SettingsScrollViewer");
+        var hintBottom = hint.TranslatePoint(new System.Windows.Point(0, hint.ActualHeight), settingsWindow).Y;
+        var footerTop = footer.TranslatePoint(new System.Windows.Point(), settingsWindow).Y;
+        Assert.InRange(footerTop - hintBottom, 12, 24);
+        Assert.True(hintBottom <= scrollViewer.TranslatePoint(new System.Windows.Point(0, scrollViewer.ActualHeight), settingsWindow).Y,
+            "The low-battery explanation must fit above the footer without clipping.");
+        Assert.InRange(scrollViewer.ScrollableHeight, 0, 0.1);
+    }
+
+    private static void AssertNoCapabilitySection(SettingsWindow settingsWindow)
+    {
+        Assert.Null(settingsWindow.FindName("DeviceCapabilities"));
+        Assert.Empty(FindVisualDescendants<Expander>(settingsWindow));
+        var visibleText = string.Join("\n", FindVisualDescendants<TextBlock>(settingsWindow).Select(block => block.Text));
+        foreach (var capabilityLabel in new[] { "设备能力", "Windows HFP", "充电识别", "Bass", "灯效" })
+        {
+            Assert.DoesNotContain(capabilityLabel, visibleText);
+        }
+    }
+
+    private static void AssertSettingsBindings(
+        SettingsWindow settingsWindow,
+        ConnectionStatusViewModel viewModel,
+        MemorySettingsStore settingsStore)
+    {
+        var toggles = new[]
+        {
+            ("StartupToggle", new Func<bool>(() => viewModel.StartWithWindows)),
+            ("OfflineCollapseToggle", new Func<bool>(() => viewModel.AutoCollapseOffline)),
+            ("AlwaysOnTopToggle", new Func<bool>(() => viewModel.AlwaysOnTop)),
+            ("LowBatteryToggle", new Func<bool>(() => viewModel.LowBatteryNotifications))
+        };
+        foreach (var (name, readSetting) in toggles)
+        {
+            var toggle = (CheckBox)settingsWindow.FindName(name);
+            var original = readSetting();
+            Assert.Equal(original, toggle.IsChecked);
+            Assert.True(toggle.Focusable && toggle.IsTabStop);
+            var track = (Border)toggle.Template.FindName("SwitchTrack", toggle);
+            var knob = (System.Windows.Shapes.Ellipse)toggle.Template.FindName("SwitchKnob", toggle);
+            Assert.True(track.TranslatePoint(new System.Windows.Point(), toggle).X > toggle.ActualWidth / 2);
+            var provider = (IToggleProvider)new CheckBoxAutomationPeer(toggle).GetPattern(PatternInterface.Toggle);
+            provider.Toggle();
+            PumpDispatcher();
+            Assert.Equal(!original, readSetting());
+            Assert.Equal(!original ? HorizontalAlignment.Right : HorizontalAlignment.Left, knob.HorizontalAlignment);
+            Assert.NotNull(settingsStore.LastSaved);
+            provider.Toggle();
+            PumpDispatcher();
+            Assert.Equal(original, readSetting());
+        }
+
+        var opacitySlider = (Slider)settingsWindow.FindName("OpacitySlider");
+        var originalOpacity = viewModel.WindowOpacity;
+        opacitySlider.SetCurrentValue(Slider.ValueProperty, 0.85);
+        PumpDispatcher();
+        Assert.Equal(0.85, viewModel.WindowOpacity, 2);
+        Assert.Equal(0.85, settingsStore.LastSaved!.Opacity, 2);
+        opacitySlider.SetCurrentValue(Slider.ValueProperty, originalOpacity);
+        PumpDispatcher();
     }
 
     private static void AssertContextMenuHeaders(Window window, params string[] expected)
     {
         var menu = window.ContextMenu!;
         menu.PlacementTarget = window;
-        menu.IsOpen = true;
+        menu.DataContext = window.DataContext;
+        menu.ApplyTemplate();
         PumpDispatcher();
         var actual = menu.Items.OfType<MenuItem>()
             .Where(item => item.Visibility == Visibility.Visible)
@@ -195,7 +331,6 @@ public sealed class WidgetWindowLifecycleTests
             .Where(header => header is not null)
             .Cast<string>()
             .ToArray();
-        menu.IsOpen = false;
         Assert.Equal(expected, actual);
     }
 
@@ -218,8 +353,14 @@ public sealed class WidgetWindowLifecycleTests
     {
         window.UpdateLayout();
         Assert.Equal(expectedMode, viewModel.WidgetMode);
-        Assert.InRange(window.ActualWidth, expectedWidth - 0.5, expectedWidth + 0.5);
-        Assert.InRange(window.ActualHeight, expectedHeight - 0.5, expectedHeight + 0.5);
+        Assert.True(
+            window.ActualWidth >= expectedWidth - 0.5 && window.ActualWidth <= expectedWidth + 0.5,
+            $"Width mismatch: expected={expectedWidth}, Width={window.Width}, ActualWidth={window.ActualWidth}, " +
+            $"ViewModelWidth={viewModel.WidgetWidth}, IsLoaded={window.IsLoaded}, IsVisible={window.IsVisible}.");
+        Assert.True(
+            window.ActualHeight >= expectedHeight - 0.5 && window.ActualHeight <= expectedHeight + 0.5,
+            $"Height mismatch: expected={expectedHeight}, Height={window.Height}, ActualHeight={window.ActualHeight}, " +
+            $"ViewModelHeight={viewModel.WidgetHeight}, IsLoaded={window.IsLoaded}, IsVisible={window.IsVisible}.");
         Assert.True(window.HasExpectedDimensions);
         Assert.Equal(1, window.VisibleStatePanelCount);
     }
@@ -296,9 +437,14 @@ public sealed class WidgetWindowLifecycleTests
 
     private sealed class MemorySettingsStore : IAppSettingsStore
     {
+        public AppSettings? LastSaved { get; private set; }
         public ValueTask<AppSettings> LoadAsync(CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(AppSettings.Default);
-        public ValueTask SaveAsync(AppSettings settings, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+        public ValueTask SaveAsync(AppSettings settings, CancellationToken cancellationToken = default)
+        {
+            LastSaved = settings;
+            return ValueTask.CompletedTask;
+        }
     }
 
     private sealed class FakeStartupManager : IStartupManager

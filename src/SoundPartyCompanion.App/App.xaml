@@ -7,7 +7,7 @@
         <SolidColorBrush x:Key="MutedTextBrush" Color="#AAA49B" />
         <SolidColorBrush x:Key="CarbonBrush" Color="#171716" />
         <SolidColorBrush x:Key="CompactOrangeBrush" Color="#9C6044" />
-        <SolidColorBrush x:Key="SpeakerOrangeBrush" Color="#F45B16" />
+        <SolidColorBrush x:Key="SpeakerOrangeBrush" Color="#B06B50" />
 
         <Style TargetType="Button">
             <Setter Property="Foreground" Value="{StaticResource WarmWhiteBrush}" />
@@ -119,12 +119,12 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Box" Property="Background" Value="#F45B16" />
-                                <Setter TargetName="Box" Property="BorderBrush" Value="#F45B16" />
+                                <Setter TargetName="Box" Property="Background" Value="#B06B50" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#B06B50" />
                                 <Setter TargetName="Check" Property="Visibility" Value="Visible" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Box" Property="BorderBrush" Value="#F45B16" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#B06B50" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.42" />

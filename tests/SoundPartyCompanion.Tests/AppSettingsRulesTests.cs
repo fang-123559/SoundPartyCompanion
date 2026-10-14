@@ -32,4 +32,17 @@ public sealed class AppSettingsRulesTests
         Assert.Equal(0, result.X);
         Assert.Equal(1, result.Y);
     }
+
+    [Fact]
+    public void NormalizeRepairsLowBatteryReminderState()
+    {
+        var result = AppSettingsRules.Normalize(AppSettings.Default with
+        {
+            LowBatteryLastObservedPercent = 101,
+            LowBatteryNotifiedThresholds = 15
+        });
+
+        Assert.Null(result.LowBatteryLastObservedPercent);
+        Assert.Equal(3, result.LowBatteryNotifiedThresholds);
+    }
 }

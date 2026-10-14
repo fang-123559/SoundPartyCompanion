@@ -51,4 +51,58 @@ public sealed class RollingFileLoggerTests
         Directory.CreateDirectory(path);
         return path;
     }
+
+    [Fact]
+    public void Write_RedactsPrivatePathsAndSensitiveFields()
+    {
+        var testDirectory = CreateTestDirectory();
+        try
+        {
+            var logger = new RollingFileLogger(testDirectory);
+            logger.Write(AppLogLevel.Warning, @"Read failed at E:\SyntheticUser\private\sample.txt");
+            logger.Write(AppLogLevel.Warning, "token=synthetic-only-value");
+            logger.Write(AppLogLevel.Warning, "artist=synthetic artist");
+            var content = File.ReadAllText(logger.LogFilePath);
+            Assert.DoesNotContain("SyntheticUser", content);
+            Assert.DoesNotContain("sample.txt", content);
+            Assert.DoesNotContain("synthetic-only-value", content);
+            Assert.DoesNotContain("synthetic artist", content);
+            Assert.Contains("[redacted]", content);
+        }
+        finally { Directory.Delete(testDirectory, recursive: true); }
+    }
+
+    [Fact]
+    public void Write_DoesNotPersistExceptionMessagesStackPathsOrData()
+    {
+        var testDirectory = CreateTestDirectory();
+        try
+        {
+            var logger = new RollingFileLogger(testDirectory);
+            var exception = new IOException(@"private media text at E:\SyntheticUser\sample.txt");
+            exception.Data["private"] = "synthetic private data";
+            logger.Write(AppLogLevel.Error, "Unhandled UI exception.", exception);
+            var content = File.ReadAllText(logger.LogFilePath);
+            Assert.Contains("ExceptionType=IOException; HResult=0x", content);
+            Assert.DoesNotContain("private media", content);
+            Assert.DoesNotContain("SyntheticUser", content);
+            Assert.DoesNotContain("synthetic private data", content);
+            Assert.Contains("ExceptionType=IOException", LogPrivacyFilter.FilterForExport(content));
+        }
+        finally { Directory.Delete(testDirectory, recursive: true); }
+    }
+
+    [Fact]
+    public void Write_UnavailableLogFileDoesNotThrowIntoTheApplication()
+    {
+        var testDirectory = CreateTestDirectory();
+        try
+        {
+            var logger = new RollingFileLogger(testDirectory);
+            Directory.CreateDirectory(logger.LogFilePath);
+            var failure = Record.Exception(() => logger.Write(AppLogLevel.Warning, "Diagnostic export completed."));
+            Assert.Null(failure);
+        }
+        finally { Directory.Delete(testDirectory, recursive: true); }
+    }
 }

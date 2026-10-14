@@ -85,6 +85,93 @@ public sealed class ConnectionStatusViewModelTests
         Assert.Contains("音箱已离线", viewModel.BatteryDetailText, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task FreshBatteryCrossingRaisesOneLowBatteryReminder()
+    {
+        var now = DateTimeOffset.Now;
+        var initial = Snapshot(SpeakerConnectionState.Connected, now) with
+        {
+            Battery = new SpeakerBatterySnapshot(
+                26,
+                SpeakerChargingState.Unknown,
+                now,
+                IsStale: false)
+        };
+        var monitor = new FakeConnectionMonitor(initial)
+        {
+            RefreshSnapshot = initial with
+            {
+                Battery = new SpeakerBatterySnapshot(
+                    20,
+                    SpeakerChargingState.Unknown,
+                    now.AddMinutes(1),
+                    IsStale: false)
+            }
+        };
+        using var viewModel = CreateViewModel(monitor, SpeakerMediaSnapshot.Empty(now));
+        var reminders = new List<LowBatteryReminderEventArgs>();
+        viewModel.LowBatteryReminderRequested += (_, args) => reminders.Add(args);
+
+        await viewModel.RefreshAsync();
+        await viewModel.RefreshAsync();
+
+        var reminder = Assert.Single(reminders);
+        Assert.Equal(20, reminder.Percent);
+        Assert.Equal(20, reminder.Threshold);
+    }
+
+    [Fact]
+    public void InitialCriticalBatteryCanBeCheckedAfterEventSubscription()
+    {
+        var now = DateTimeOffset.Now;
+        var initial = Snapshot(SpeakerConnectionState.Connected, now) with
+        {
+            Battery = new SpeakerBatterySnapshot(
+                10,
+                SpeakerChargingState.Unknown,
+                now,
+                IsStale: false)
+        };
+        using var viewModel = CreateViewModel(
+            new FakeConnectionMonitor(initial),
+            SpeakerMediaSnapshot.Empty(now));
+        var reminders = new List<LowBatteryReminderEventArgs>();
+        viewModel.LowBatteryReminderRequested += (_, args) => reminders.Add(args);
+
+        Assert.True(viewModel.IsLowBattery);
+        Assert.True(viewModel.IsCriticalBattery);
+        Assert.Equal("10%", viewModel.BatteryDisplayText);
+
+        viewModel.CheckLowBatteryReminder();
+        viewModel.CheckLowBatteryReminder();
+
+        var reminder = Assert.Single(reminders);
+        Assert.Equal(10, reminder.Percent);
+        Assert.Equal(10, reminder.Threshold);
+    }
+
+    [Fact]
+    public void StaleBatteryDoesNotShowLowBatteryIndicator()
+    {
+        var now = DateTimeOffset.Now;
+        var initial = Snapshot(SpeakerConnectionState.Connected, now) with
+        {
+            Battery = new SpeakerBatterySnapshot(
+                10,
+                SpeakerChargingState.Unknown,
+                now.AddHours(-1),
+                IsStale: true)
+        };
+
+        using var viewModel = CreateViewModel(
+            new FakeConnectionMonitor(initial),
+            SpeakerMediaSnapshot.Empty(now));
+
+        Assert.False(viewModel.IsLowBattery);
+        Assert.False(viewModel.IsCriticalBattery);
+        Assert.Equal("10%", viewModel.BatteryDisplayText);
+    }
+
     private static ConnectionStatusViewModel CreateViewModel(
         IConnectionMonitor monitor,
         SpeakerMediaSnapshot media) =>
@@ -119,7 +206,7 @@ public sealed class ConnectionStatusViewModelTests
             remove { }
         }
         public SpeakerConnectionSnapshot Current { get; private set; } = current;
-        public SpeakerConnectionSnapshot RefreshSnapshot { get; init; } = current;
+        public SpeakerConnectionSnapshot RefreshSnapshot { get; set; } = current;
 
         public Task StartAsync(SpeakerSelection? selection, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetSelectionAsync(SpeakerSelection? selection, CancellationToken cancellationToken = default) => Task.CompletedTask;
