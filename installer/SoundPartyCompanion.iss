@@ -43,6 +43,8 @@ Source: "..\artifacts\publish\win-x64\licenses\dotnet-THIRD-PARTY-NOTICES.txt"; 
 Source: "..\artifacts\publish\win-x64\licenses\windowsdesktop-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\artifacts\publish\win-x64\licenses\windowsdesktop-THIRD-PARTY-NOTICES.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\artifacts\publish\win-x64\licenses\inno-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\artifacts\publish\win-x64\licenses\windows-sdk-license.rtf"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\artifacts\publish\win-x64\licenses\cswinrt-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

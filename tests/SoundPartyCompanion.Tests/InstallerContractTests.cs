@@ -38,10 +38,12 @@ public sealed class InstallerContractTests
     public void PayloadContainsOnlyExecutableAndRequiredNotices()
     {
         var files = Installer.Split("[Files]", StringSplitOptions.None)[1].Split("[Icons]", StringSplitOptions.None)[0];
-        Assert.Equal(8, files.Split('\n').Count(line => line.StartsWith("Source:", StringComparison.Ordinal)));
+        Assert.Equal(10, files.Split('\n').Count(line => line.StartsWith("Source:", StringComparison.Ordinal)));
         Assert.Contains("win-x64\\{#MyAppExeName}", files);
         Assert.Contains("win-x64\\LICENSE", files);
         Assert.Contains("windowsdesktop-THIRD-PARTY-NOTICES.txt", files);
+        Assert.Contains("windows-sdk-license.rtf", files);
+        Assert.Contains("cswinrt-LICENSE.txt", files);
         Assert.DoesNotContain("recursesubdirs", files);
         Assert.DoesNotContain("\\*", files);
     }

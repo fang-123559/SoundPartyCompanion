@@ -73,9 +73,22 @@ try {
     [IO.File]::WriteAllText((Join-Path $licenseDirectory 'windowsdesktop-THIRD-PARTY-NOTICES.txt'),
         ($desktopNotices -join "`r`n`r`n"), [Text.UTF8Encoding]::new($false))
     Copy-Item -LiteralPath (Join-Path $projectRoot '.tools\innosetup\license.txt') -Destination (Join-Path $licenseDirectory 'inno-LICENSE.txt')
+    $additionalNotices = @(
+        @{ file='windows-sdk-license.rtf'; url='https://download.microsoft.com/download/0/F/F/0FF2B061-47DD-4F55-89B6-FD1D8C44F14D/sdk_license.rtf'; hash='DD07EB178E00C6BBA4148457FC00FF77CD4887EB521D504186FE59C9EC8BBE62' },
+        @{ file='cswinrt-LICENSE.txt'; url='https://raw.githubusercontent.com/microsoft/CsWinRT/master/LICENSE'; hash='9906940F61B1F0B533FA7D99BAF55178B2808FBE113EA51DFBFAD8572CCD5F2B' }
+    )
+    foreach ($notice in $additionalNotices) {
+        $cache = Join-Path $projectRoot ('.tools\cache\' + $notice.file)
+        if (-not (Test-Path -LiteralPath $cache)) { Invoke-WebRequest -Uri $notice.url -OutFile $cache }
+        if ((Get-FileHash -LiteralPath $cache -Algorithm SHA256).Hash -ne $notice.hash) { throw 'Additional runtime license hash mismatch.' }
+        Copy-Item -LiteralPath $cache -Destination (Join-Path $licenseDirectory $notice.file)
+    }
+    $deps = Get-Content -LiteralPath ([IO.Path]::ChangeExtension($runtimeConfigPath.Replace('.runtimeconfig.json','.deps.json'),'.json')) -Raw | ConvertFrom-Json
+    $windowsSdkProjectionVersion = ($deps.libraries.PSObject.Properties.Name | Where-Object { $_ -like 'runtimepack.Microsoft.Windows.SDK.NET.Ref/*' }).Split('/')[1]
     $payloadNames = @('SoundPartyCompanion.App.exe','LICENSE','THIRD-PARTY-NOTICES.md',
         'licenses/dotnet-LICENSE.txt','licenses/dotnet-THIRD-PARTY-NOTICES.txt',
-        'licenses/windowsdesktop-LICENSE.txt','licenses/windowsdesktop-THIRD-PARTY-NOTICES.txt','licenses/inno-LICENSE.txt')
+        'licenses/windowsdesktop-LICENSE.txt','licenses/windowsdesktop-THIRD-PARTY-NOTICES.txt','licenses/inno-LICENSE.txt',
+        'licenses/windows-sdk-license.rtf','licenses/cswinrt-LICENSE.txt')
     $payload = @(foreach ($name in $payloadNames) {
         $file = Get-Item -LiteralPath (Join-Path (Split-Path -Parent $releasePath) $name)
         @{ file=$name; bytes=$file.Length; sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash }
@@ -107,6 +120,7 @@ try {
         sdkVersion = $sdkVersion
         runtimeVersion = $runtimeVersion
         windowsDesktopVersion = $desktopVersion
+        windowsSdkProjectionVersion = $windowsSdkProjectionVersion
         sourceCommit = (git -C $projectRoot rev-parse HEAD)
         sourceDirty = [bool]@(git -C $projectRoot status --porcelain).Count
         compilerVersion = (& $compilerPath --version | Out-String).Trim()
