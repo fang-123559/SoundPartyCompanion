@@ -5,7 +5,7 @@
         Icon="pack://application:,,,/SoundPartyCompanion.App;component/Assets/app.ico"
         Width="416"
         Height="476"
-        WindowStartupLocation="CenterOwner"
+        WindowStartupLocation="Manual"
         WindowStyle="None"
         ResizeMode="NoResize"
         AllowsTransparency="True"
@@ -270,13 +270,18 @@
                     <Slider x:Name="OpacitySlider" Margin="0,8,0,0" Minimum="0.65" Maximum="1" SmallChange="0.05" LargeChange="0.1"
                             Style="{StaticResource SettingsOpacitySliderStyle}" AutomationProperties.Name="组件不透明度"
                             Value="{Binding WindowOpacity, UpdateSourceTrigger=PropertyChanged}" />
-                    <Grid Margin="0,8,0,0">
+                    <Grid x:Name="ComponentPositionRow" Margin="0,8,0,0" MinHeight="32">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock VerticalAlignment="Center" FontSize="12" Foreground="#AAA49B" Text="拖动后自动记忆" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock x:Name="ComponentPositionLabel" Text="组件位置" VerticalAlignment="Center" />
+                            <TextBlock Margin="10,0,0,0" FontSize="11" Foreground="#AAA49B"
+                                       VerticalAlignment="Center" Text="拖动后自动记忆" />
+                        </StackPanel>
                         <Button Grid.Column="1" Height="32" Padding="9,4" FontSize="12" Content="重置位置"
+                                VerticalAlignment="Center"
                                 FocusVisualStyle="{StaticResource SettingsFocusStyle}" Command="{Binding ResetPositionCommand}" />
                     </Grid>
 

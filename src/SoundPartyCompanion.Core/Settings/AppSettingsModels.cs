@@ -120,6 +120,24 @@ public sealed record WindowSnapCandidate(
 
 public static class WindowPlacementRules
 {
+    // All rectangles and distances use the same physical-pixel coordinates.
+    public static WindowPosition ReplaceAtAnchor(
+        WindowWorkArea workArea,
+        double windowWidth,
+        double windowHeight,
+        WindowWorkArea ownerBounds,
+        double surfaceInset = 14)
+    {
+        var right = workArea.Left + workArea.Width;
+        var bottom = workArea.Top + workArea.Height;
+        // Align visible top/right edges, excluding the settings shadow inset.
+        return new WindowPosition(
+            Math.Clamp(ownerBounds.Left + ownerBounds.Width + surfaceInset - windowWidth,
+                workArea.Left, Math.Max(workArea.Left, right - windowWidth)),
+            Math.Clamp(ownerBounds.Top - surfaceInset,
+                workArea.Top, Math.Max(workArea.Top, bottom - windowHeight)));
+    }
+
     public static WindowPosition Restore(
         WindowWorkArea workArea,
         double windowWidth,

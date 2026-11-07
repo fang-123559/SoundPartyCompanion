@@ -8,6 +8,25 @@ namespace SoundPartyCompanion.App.Infrastructure;
 
 public sealed class WindowPlacementService
 {
+    public void ReplaceAtAnchor(Window window, Window anchor, double surfaceInset)
+    {
+        var workArea = ToPixelWorkArea(GetScreen(anchor));
+        var ownerRect = GetPixelBounds(anchor);
+        var ownerBounds = new WindowWorkArea(ownerRect.Left, ownerRect.Top, ownerRect.Width, ownerRect.Height);
+        // Moving to the anchor's monitor can change DPI and therefore native size.
+        for (var pass = 0; pass < 2; pass++)
+        {
+            var scale = GetWindowScale(window);
+            window.MaxWidth = workArea.Width / scale;
+            window.MaxHeight = workArea.Height / scale;
+            window.UpdateLayout();
+            var bounds = GetPixelBounds(window);
+            var position = WindowPlacementRules.ReplaceAtAnchor(
+                workArea, bounds.Width, bounds.Height, ownerBounds, surfaceInset * scale);
+            MoveInPixels(window, position);
+        }
+    }
+
     public void Restore(Window window, NormalizedWindowPlacement? placement)
     {
         ArgumentNullException.ThrowIfNull(window);

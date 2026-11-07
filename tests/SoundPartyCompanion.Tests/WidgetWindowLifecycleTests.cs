@@ -158,14 +158,15 @@ public sealed class WidgetWindowLifecycleTests
             PumpDispatcherFor(TimeSpan.FromMilliseconds(320));
             AssertState(window, viewModel, WidgetDisplayMode.Compact, 350, 125);
 
-            settingsWindow = new SettingsWindow(viewModel)
+            settingsWindow = new SettingsWindow(viewModel, window)
             {
-                Owner = window,
                 ShowActivated = false
             };
-            settingsWindow.Show();
+            settingsWindow.ShowInPlace();
             PumpDispatcher();
-            AssertSettingsWindowLayout(settingsWindow, viewModel, settingsStore);
+            Assert.False(window.IsVisible);
+            Assert.True(settingsWindow.IsVisible);
+            AssertSettingsWindowLayout(settingsWindow, window, viewModel, settingsStore);
         }
         finally
         {
@@ -182,12 +183,17 @@ public sealed class WidgetWindowLifecycleTests
 
     private static void AssertSettingsWindowLayout(
         SettingsWindow settingsWindow,
+        MainWindow widgetWindow,
         ConnectionStatusViewModel viewModel,
         MemorySettingsStore settingsStore)
     {
         settingsWindow.UpdateLayout();
         Assert.NotNull(settingsWindow.Icon);
-        Assert.Equal(settingsWindow.Owner!.Icon.ToString(), settingsWindow.Icon.ToString());
+        Assert.Null(settingsWindow.Owner);
+        Assert.Equal(widgetWindow.Icon.ToString(), settingsWindow.Icon.ToString());
+        var originalLeft = widgetWindow.Left;
+        var originalTop = widgetWindow.Top;
+        Assert.Equal(WidgetDisplayMode.Compact, viewModel.WidgetMode);
         Assert.True(settingsWindow.ShowInTaskbar);
         var surface = (Border)settingsWindow.FindName("SettingsSurface");
         Assert.Equal(388, surface.ActualWidth);
@@ -206,6 +212,11 @@ public sealed class WidgetWindowLifecycleTests
         Assert.DoesNotContain(FindVisualDescendants<Button>(settingsWindow), button => Equals(button.Content, "完成"));
         Assert.Equal("关闭设置", AutomationProperties.GetName(closeButton));
         Assert.Equal("本地设置 · 自动保存", saveHint.Text);
+        var positionRow = (Grid)settingsWindow.FindName("ComponentPositionRow");
+        var positionLabel = (TextBlock)settingsWindow.FindName("ComponentPositionLabel");
+        Assert.Equal("组件位置", positionLabel.Text);
+        Assert.Contains(FindVisualDescendants<Button>(positionRow), button =>
+            Equals(button.Content, "重置位置") && button.Command == viewModel.ResetPositionCommand);
         AssertSettingsBindings(settingsWindow, viewModel, settingsStore);
 
         settingsWindow.Height = 408;
@@ -233,14 +244,30 @@ public sealed class WidgetWindowLifecycleTests
         Assert.InRange(scrollViewer.VerticalOffset, 0, 0.1);
         AssertSettingsContentSpacing(settingsWindow);
 
+        settingsWindow.Left -= 30;
+        settingsWindow.Top += 20;
         ((IInvokeProvider)new ButtonAutomationPeer(closeButton).GetPattern(PatternInterface.Invoke)).Invoke();
         PumpDispatcher();
         Assert.False(settingsWindow.IsVisible);
-        var reopened = new SettingsWindow(viewModel) { Owner = settingsWindow.Owner, ShowActivated = false };
+        Assert.True(widgetWindow.IsVisible);
+        Assert.Equal(WidgetDisplayMode.Compact, viewModel.WidgetMode);
+        Assert.InRange(Math.Abs(widgetWindow.Left - originalLeft), 0, 0.5);
+        Assert.InRange(Math.Abs(widgetWindow.Top - originalTop), 0, 0.5);
+
+        viewModel.ActivateWidgetAsync().GetAwaiter().GetResult();
+        PumpDispatcherFor(TimeSpan.FromMilliseconds(320));
+        Assert.Equal(WidgetDisplayMode.Expanded, viewModel.WidgetMode);
+        originalLeft = widgetWindow.Left;
+        originalTop = widgetWindow.Top;
+        var reopened = new SettingsWindow(viewModel, widgetWindow) { ShowActivated = false };
         try
         {
-            reopened.Show();
+            reopened.ShowInPlace();
             PumpDispatcher();
+            reopened.ShowInPlace();
+            Assert.False(widgetWindow.IsVisible);
+            Assert.True(reopened.IsVisible);
+            Assert.Equal(WidgetDisplayMode.Expanded, viewModel.WidgetMode);
             AssertNoCapabilitySection(reopened);
             AssertSettingsContentSpacing(reopened);
             Assert.Equal(viewModel.LowBatteryNotifications, ((CheckBox)reopened.FindName("LowBatteryToggle")).IsChecked);
@@ -249,6 +276,17 @@ public sealed class WidgetWindowLifecycleTests
         {
             reopened.Close();
         }
+        Assert.True(widgetWindow.IsVisible);
+        Assert.Equal(WidgetDisplayMode.Expanded, viewModel.WidgetMode);
+        Assert.InRange(Math.Abs(widgetWindow.Left - originalLeft), 0, 0.5);
+        Assert.InRange(Math.Abs(widgetWindow.Top - originalTop), 0, 0.5);
+
+        var hidden = new SettingsWindow(viewModel, widgetWindow) { ShowActivated = false };
+        hidden.ShowInPlace();
+        hidden.CloseWithoutRestoringWidget();
+        PumpDispatcher();
+        Assert.False(widgetWindow.IsVisible);
+        widgetWindow.ShowFromTray();
     }
 
     private static void AssertSettingsContentSpacing(SettingsWindow settingsWindow)

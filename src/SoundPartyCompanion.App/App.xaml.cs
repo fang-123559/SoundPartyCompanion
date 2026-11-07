@@ -149,7 +149,8 @@ public partial class App : System.Windows.Application
     private void ToggleWidgetVisibility()
     {
         if (_widgetWindow is null) return;
-        if (_widgetWindow.IsVisible) _widgetWindow.Hide();
+        if (_settingsWindow is { IsVisible: true }) _settingsWindow.CloseWithoutRestoringWidget();
+        else if (_widgetWindow.IsVisible) _widgetWindow.Hide();
         else _widgetWindow.ShowFromTray();
         UpdateTrayIcon();
     }
@@ -168,6 +169,11 @@ public partial class App : System.Windows.Application
             _activationPending = true;
             return;
         }
+        if (_settingsWindow is { IsVisible: true })
+        {
+            _settingsWindow.ShowInPlace();
+            return;
+        }
         _widgetWindow.ShowFromTray();
         UpdateTrayIcon();
     }
@@ -177,11 +183,15 @@ public partial class App : System.Windows.Application
         if (_connectionViewModel is null || _widgetWindow is null) return;
         if (_settingsWindow is null)
         {
-            _settingsWindow = new SettingsWindow(_connectionViewModel) { Owner = _widgetWindow };
-            _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+            _settingsWindow = new SettingsWindow(_connectionViewModel, _widgetWindow);
+            _settingsWindow.Closed += (_, _) =>
+            {
+                _settingsWindow = null;
+                UpdateTrayIcon();
+            };
         }
-        _settingsWindow.Show();
-        _settingsWindow.Activate();
+        _settingsWindow.ShowInPlace();
+        UpdateTrayIcon();
     }
 
     private static void OpenBluetoothSettings()
@@ -257,7 +267,7 @@ public partial class App : System.Windows.Application
     {
         if (_exiting) return;
         _exiting = true;
-        _settingsWindow?.Close();
+        _settingsWindow?.CloseWithoutRestoringWidget();
         if (_widgetWindow is not null)
         {
             _widgetWindow.AllowClose = true;
@@ -306,7 +316,7 @@ public partial class App : System.Windows.Application
         }
         if (_widgetWindow is null || _connectionViewModel is null) return;
         _trayIcon?.Update(new TrayMenuState(
-            _widgetWindow.IsVisible,
+            _widgetWindow.IsVisible || _settingsWindow is { IsVisible: true },
             _connectionViewModel.AlwaysOnTop,
             _connectionViewModel.DeviceName,
             _connectionViewModel.StatusText,
