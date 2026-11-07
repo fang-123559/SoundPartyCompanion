@@ -2,7 +2,7 @@
 
 非官方、仅本地运行的 Windows 11 x64 桌面音箱伴侣。当前已验证设备：`Xiaomi蓝牙音箱Pro`；设计参考 `MDZ-39-DB / Xiaomi Sound Party`。
 
-`0.1.1` 使用 .NET 10 LTS，已完成当前个人日常使用范围的验收，包含连接与音频控制、媒体与电量显示、安装卸载及原位设置切换。本轮准备本地正式安装包，尚未推送 GitHub 或创建公开 Release。详见 [发布说明](./docs/release-0.1.1.md)。
+`0.1.1` 使用 .NET 10 LTS，已完成当前个人日常使用范围的验收，包含连接与音频控制、媒体与电量显示、安装卸载及原位设置切换。源码已公开至 [GitHub 仓库](https://github.com/fang-123559/SoundPartyCompanion)，本地正式安装包已准备好，尚未创建公开 Release。详见 [发布说明](./docs/release-0.1.1.md)。
 
 ## 安装与首次使用
 
@@ -49,7 +49,7 @@
 
 安装器使用项目内便携 Inno Setup `7.1.0`，校验官方 `Pyrsys B.V.` 签名；当前编译器标示 `Non-commercial use only`。本项目为个人、非商业项目，许可声明见 [第三方声明](./THIRD-PARTY-NOTICES.md)。
 
-本地产物位于 `artifacts/installer/`，含安装包、SHA256 和带版本的打包报告。报告记录 SDK/运行时、源码提交、工作树状态及载荷哈希；私人备份、日志、工具、PDB 不进入安装包或源码提交。Windows [构建配置](./.github/workflows/build.yml) 本轮只本地检查，未声称远程 CI 通过。
+本地产物位于 `artifacts/installer/`，含安装包、SHA256 和带版本的打包报告。报告记录 SDK/运行时、源码提交、工作树状态及载荷哈希；私人备份、日志、工具、PDB 不进入安装包或源码提交。Windows [构建配置](./.github/workflows/build.yml) 会执行构建、测试、发布和安装器编译，运行结果与构建附件见 [GitHub Actions](https://github.com/fang-123559/SoundPartyCompanion/actions/workflows/build.yml)；不会自动创建 Release。
 
 ## 文档与许可
 

@@ -297,7 +297,9 @@ public sealed class WidgetWindowLifecycleTests
         var scrollViewer = (ScrollViewer)settingsWindow.FindName("SettingsScrollViewer");
         var hintBottom = hint.TranslatePoint(new System.Windows.Point(0, hint.ActualHeight), settingsWindow).Y;
         var footerTop = footer.TranslatePoint(new System.Windows.Point(), settingsWindow).Y;
-        Assert.InRange(footerTop - hintBottom, 12, 24);
+        // Font metrics and layout rounding can differ by one device pixel across Windows images.
+        var pixelTolerance = 1 / VisualTreeHelper.GetDpi(settingsWindow).DpiScaleY;
+        Assert.InRange(footerTop - hintBottom, 12 - pixelTolerance, 24 + pixelTolerance);
         Assert.True(hintBottom <= scrollViewer.TranslatePoint(new System.Windows.Point(0, scrollViewer.ActualHeight), settingsWindow).Y,
             "The low-battery explanation must fit above the footer without clipping.");
         Assert.InRange(scrollViewer.ScrollableHeight, 0, 0.1);
