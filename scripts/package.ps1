@@ -126,12 +126,8 @@ try {
         compilerVersion = (& $compilerPath --version | Out-String).Trim()
         compilerSignature = 'Valid; Pyrsys B.V. (checked by install-inno.ps1)'
         installerSignature = [string](Get-AuthenticodeSignature -LiteralPath $installerPath).Status
-        testsPassed = [int]$counters.passed
-        testsTotal = [int]$counters.total
         payload = $payload
         excluded = @('PDBs', 'configuration', 'device-selection cache', 'logs', 'build tools')
-        installationExecuted = $false
-        pending = @('See release validation report; packaging does not prove installation or hardware acceptance.')
     }
     [IO.File]::WriteAllText((Join-Path $installerDirectory "packaging-report-$version.json"),
         ($report | ConvertTo-Json -Depth 6), $utf8)

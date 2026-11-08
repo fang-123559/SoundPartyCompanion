@@ -8,3 +8,12 @@ artifacts/
 *.nupkg
 TestResults/
 
+# Local collaboration and design studies
+/AGENTS.md
+/visualizations/
+
+# Local reference images in the project root
+/*.jpg
+/*.jpeg
+/*.png
+

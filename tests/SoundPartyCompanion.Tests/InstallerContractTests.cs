@@ -95,7 +95,6 @@ public sealed class InstallerContractTests
         Assert.Contains("$counters.passed -ne [int]$counters.total", packaging);
         Assert.Contains("$appMetadata.ProductVersion -ne $version", packaging);
         Assert.Contains(".sha256", packaging);
-        Assert.Contains("installationExecuted = $false", packaging);
         Assert.Contains("$signature.Status -ne 'Valid'", bootstrap);
         Assert.Contains("CN=Pyrsys", bootstrap);
         Assert.Contains("/PORTABLE=1", bootstrap);
