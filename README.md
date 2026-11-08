@@ -1,6 +1,6 @@
 # Sound Party Companion
 
-非官方、仅本地运行的 Windows 11 x64 桌面音箱伴侣。当前已验证设备：`Xiaomi蓝牙音箱Pro`；设计参考 `MDZ-39-DB / Xiaomi Sound Party`。
+非官方、仅本地运行的 Windows 11 x64 桌面音箱伴侣。适用设备：`Xiaomi蓝牙音箱Pro`；设计参考 `MDZ-39-DB / Xiaomi Sound Party`。
 
 `0.1.1` 使用 .NET 10 LTS，提供连接状态、音频控制、媒体与电量显示，以及原位切换的设置面板。源码见 [GitHub 仓库](https://github.com/fang-123559/SoundPartyCompanion)，正式安装包见 [v0.1.1 Release](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.1)。详见 [发布说明](./docs/release-0.1.1.md)。
 
@@ -23,14 +23,14 @@
 - Windows HFP 系统电量、采集时间与缓存过期提示；20%/10% 低电提醒可关闭，同一放电区间去重。
 - 紧凑、展开、离线组件；多屏位置记忆、DPI 适配、置顶与透明度设置。
 - 媒体按钮依赖播放器提供的 Windows 能力；没有媒体会话时隐藏媒体区。
-- 充电识别暂缓；不根据电量上升或 USB 插拔推断充电。USB-C 只作为供电路径，蓝牙断开仍显示离线。
+- 不提供充电识别，不根据电量上升或 USB 插拔推断充电。USB-C 只作为供电路径，蓝牙断开仍显示离线。
 - Bass、灯效与 HFP 切换入口保持隐藏；不支持 TWS、Party Connect、多音箱、其他型号兼容承诺、OTA、自动更新或代码签名。
 
 ## 诊断与反馈
 
 右键托盘 →“导出诊断”→ 选择本地 ZIP 保存位置。取消不生成文件，不覆盖已有文件，也不会自动上传。
 
-诊断包仅包含版本、基础状态和脱敏固定日志；不含配置、设备选择缓存、设备标识、用户名、个人路径或媒体信息。反馈时说明 Windows 版本、应用版本、复现步骤及期望/实际行为，检查 ZIP 后再主动分享。不要分享设置备份或 `private/` 目录。
+诊断包仅包含版本、基础状态和脱敏固定日志；不含配置、设备选择缓存、设备标识、用户名、个人路径或媒体信息。反馈时说明 Windows 版本、应用版本、复现步骤及期望/实际行为，检查 ZIP 后再主动分享。
 
 ## 本地构建
 
@@ -50,8 +50,8 @@
 ## 文档与许可
 
 - [更新日志](./CHANGELOG.md) · [0.1.1 发布说明](./docs/release-0.1.1.md)
-- [产品需求](./PRD.md) · [技术规格](./SPEC.md)
-- [设计规范](./DESIGN.md) · [实施计划](./PLAN.md)
+- [产品说明](./PRD.md) · [功能说明](./SPEC.md)
+- [界面与交互](./DESIGN.md) · [版本与功能范围](./PLAN.md)
 - [MIT LICENSE](./LICENSE) · [第三方声明](./THIRD-PARTY-NOTICES.md)
 
 不使用小米账号、云服务或遥测；所有设置和日志留在本机。本项目不隶属于或代表小米官方。
