@@ -2,12 +2,12 @@
 
 非官方、仅本地运行的 Windows 11 x64 桌面音箱伴侣。当前已验证设备：`Xiaomi蓝牙音箱Pro`；设计参考 `MDZ-39-DB / Xiaomi Sound Party`。
 
-`0.1.1` 使用 .NET 10 LTS，已完成当前个人日常使用范围的验收，包含连接与音频控制、媒体与电量显示、安装卸载及原位设置切换。源码见 [GitHub 仓库](https://github.com/fang-123559/SoundPartyCompanion)，正式安装包见 [v0.1.1 Release](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.1)。详见 [发布说明](./docs/release-0.1.1.md)。
+`0.1.1` 使用 .NET 10 LTS，提供连接状态、音频控制、媒体与电量显示，以及原位切换的设置面板。源码见 [GitHub 仓库](https://github.com/fang-123559/SoundPartyCompanion)，正式安装包见 [v0.1.1 Release](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.1)。详见 [发布说明](./docs/release-0.1.1.md)。
 
 ## 安装与首次使用
 
 1. 在 Windows“设置 → 蓝牙和设备”配对音箱，并保持蓝牙开启。
-2. 下载 [Windows x64 安装包](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe) 和 [SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe.sha256)，核对文件来源和 SHA256。[打包报告](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/packaging-report-0.1.1.json) 记录源码提交及构建环境。附件来自通过 132 项测试的 Windows CI，源码仓库不包含安装包。
+2. 下载 [Windows x64 安装包](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe) 和 [SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe.sha256)，核对文件来源和 SHA256。[打包报告](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/packaging-report-0.1.1.json) 记录源码提交及构建环境。
 3. 运行安装包。默认安装到当前用户的 `%LocalAppData%\Programs\SoundPartyCompanion`，无需管理员权限，也无需另装 .NET。
 4. 从开始菜单打开 Sound Party Companion。组件区分“已配对但离线”“已连接”和“当前输出”；点击卡片展开音量、静音和可用媒体控制。
 5. 托盘菜单可显示/隐藏、打开设置、导出诊断和退出。首次使用默认启用登录启动，可在设置关闭；`Alt+F4` 隐藏到托盘。
@@ -25,10 +25,6 @@
 - 媒体按钮依赖播放器提供的 Windows 能力；没有媒体会话时隐藏媒体区。
 - 充电识别暂缓；不根据电量上升或 USB 插拔推断充电。USB-C 只作为供电路径，蓝牙断开仍显示离线。
 - Bass、灯效与 HFP 切换入口保持隐藏；不支持 TWS、Party Connect、多音箱、其他型号兼容承诺、OTA、自动更新或代码签名。
-
-✅ 0.1.1 已通过 132 项自动测试，Release 构建 0 警告、0 错误；用户已确认连接/音频 8 项、媒体/电量 3 项及原位设置切换验收通过。跨版本升级、默认保留及显式删除卸载、原数据恢复、本机无原配置基础启动也已有验证记录。
-
-⚠️ 真正注销登录后的自动启动、另一台或干净 Windows 环境尚未验证。DPI/多屏、长时间运行、诊断交互和低电系统通知有 0.1.0 历史验收，本轮不要求逐项重做，也不将历史记录描述为 0.1.1 全量复测。截图与扩展验证按需要补充，不阻塞当前个人使用版本。
 
 ## 诊断与反馈
 
@@ -54,7 +50,7 @@
 ## 文档与许可
 
 - [更新日志](./CHANGELOG.md) · [0.1.1 发布说明](./docs/release-0.1.1.md)
-- [产品需求](./PRD.md) · [技术规格与验收历史](./SPEC.md)
+- [产品需求](./PRD.md) · [技术规格](./SPEC.md)
 - [设计规范](./DESIGN.md) · [实施计划](./PLAN.md)
 - [MIT LICENSE](./LICENSE) · [第三方声明](./THIRD-PARTY-NOTICES.md)
 
