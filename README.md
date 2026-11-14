@@ -6,6 +6,8 @@
 
 ## 安装与首次使用
 
+若 GitHub 下载不便，可使用 [夸克网盘备用下载（v0.1.1，Windows x64）](https://pan.quark.cn/s/70506127e681)。下载后请用下方同版本的 SHA256 校验文件核对安装包。
+
 1. 在 Windows“设置 → 蓝牙和设备”配对音箱，并保持蓝牙开启。
 2. 下载 [Windows x64 安装包](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe) 和 [SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe.sha256)，核对文件来源和 SHA256。[打包报告](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/packaging-report-0.1.1.json) 记录源码提交及构建环境。
 3. 运行安装包。默认安装到当前用户的 `%LocalAppData%\Programs\SoundPartyCompanion`，无需管理员权限，也无需另装 .NET。
@@ -16,6 +18,12 @@
 安装包未签名，Windows 可能显示 SmartScreen 提示。SHA256 校验内容完整性，不代表发布者身份认证。
 
 升级保留设置、设备选择缓存及低电提醒去重状态。卸载默认保留数据；明确选择删除才清理固定配置和四份应用日志。未知文件、链接与已导出诊断 ZIP 保留。
+
+### 双击安装包没有反应
+
+1. 确认安装包来自本项目发布页或上方的网盘链接，且 SHA256 与该版本的校验文件一致。
+2. 右键安装包，打开 **属性 → 常规**。若底部「安全」提示右侧有 **解除锁定**，勾选后点 **应用 → 确定**，再双击安装包。这一步只移除该文件的下载标记。
+3. 如果没有这个选项，或重试后仍未弹出安装向导，请查看 **Windows 安全中心 → 病毒和威胁防护 → 保护历史记录**。反馈时附上 Windows 版本和出现的提示。
 
 ## 功能与限制
 
