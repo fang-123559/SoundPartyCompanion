@@ -6,6 +6,8 @@
 
 ## 安装与首次使用
 
+如果不熟悉 GitHub，可以用豆包获取下载链接和安装指导。普通对话可[复制下载提示词](https://github.com/fang-123559/SoundPartyCompanion-Doubao/blob/main/download-with-ai.txt)，豆包工作可[下载 Skill ZIP](https://github.com/fang-123559/SoundPartyCompanion-Doubao/releases/latest/download/download-sound-party-companion.zip)并按[导入说明](https://github.com/fang-123559/SoundPartyCompanion-Doubao#豆包工作)使用。
+
 若 GitHub 下载不便，可使用 [夸克网盘备用下载（v0.1.1，Windows x64）](https://pan.quark.cn/s/70506127e681)。下载后请用下方同版本的 SHA256 校验文件核对安装包。
 
 1. 在 Windows“设置 → 蓝牙和设备”配对音箱，并保持蓝牙开启。
