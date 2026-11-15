@@ -34,7 +34,7 @@ public sealed record AudioEndpointDescriptor(
 public sealed record SpeakerAudioSnapshot(
     IReadOnlyList<AudioEndpointDescriptor> Endpoints,
     double? VolumePercent,
-    bool IsMuted,
+    bool? IsMuted,
     bool IsCurrentOutput,
     DateTimeOffset ObservedAt)
 {
@@ -42,7 +42,7 @@ public sealed record SpeakerAudioSnapshot(
         endpoint.Kind == SpeakerAudioEndpointKind.A2dpRender && endpoint.IsActive);
 
     public static SpeakerAudioSnapshot Unavailable(DateTimeOffset observedAt) =>
-        new([], null, false, false, observedAt);
+        new([], null, null, false, observedAt);
 }
 
 public static class AudioValueRules

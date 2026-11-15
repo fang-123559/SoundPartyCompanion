@@ -227,7 +227,6 @@ public partial class App : System.Windows.Application
                 return;
             }
             var connection = _connectionMonitor.Current;
-            var hasAudioControl = _connectionViewModel.ToggleMuteCommand.CanExecute(null);
             var snapshot = new DiagnosticExportSnapshot(
                 typeof(App).Assembly.GetName().Version ?? new Version(0, 1, 0),
                 Environment.OSVersion.Version,
@@ -236,8 +235,8 @@ public partial class App : System.Windows.Application
                 connection.Battery.Percent,
                 connection.Battery.IsStale,
                 connection.Battery.ObservedAt,
-                hasAudioControl ? _connectionViewModel.VolumePercent : null,
-                hasAudioControl ? _connectionViewModel.IsMuted : null);
+                _connectionViewModel.ReportedVolumePercent,
+                _connectionViewModel.ReportedMuteState);
             var logDirectory = _logDirectory;
             var destination = dialog.FileName;
             var result = await Task.Run(() => new DiagnosticExportService().ExportAsync(logDirectory, destination, snapshot));

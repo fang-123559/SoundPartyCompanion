@@ -4,6 +4,8 @@ namespace SoundPartyCompanion.Core.Audio;
 
 public static class AudioEndpointClassifier
 {
+    private static readonly string[] SupportedSpeakerNames = ["Xiaomi蓝牙音箱Pro", "Xiaomi Sound Party"];
+
     private static readonly string[] HandsFreeMarkers =
     [
         "handsfree",
@@ -21,6 +23,13 @@ public static class AudioEndpointClassifier
 
         return normalizedDevice.Length >= 4 &&
             normalizedEndpoint.Contains(normalizedDevice, StringComparison.Ordinal);
+    }
+
+    public static bool MatchesSupportedSpeakerAlias(string deviceName, string endpointName)
+    {
+        var normalizedDevice = Normalize(deviceName);
+        return SupportedSpeakerNames.Any(name => Normalize(name) == normalizedDevice) &&
+            SupportedSpeakerNames.Any(name => NamesMatch(name, endpointName));
     }
 
     public static SpeakerAudioEndpointKind Classify(

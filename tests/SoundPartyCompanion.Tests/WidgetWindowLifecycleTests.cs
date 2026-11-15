@@ -60,11 +60,12 @@ public sealed class WidgetWindowLifecycleTests
                 ShutdownMode = ShutdownMode.OnExplicitShutdown
             };
             var monitor = new FakeConnectionMonitor(Snapshot(SpeakerConnectionState.PairedOffline));
+            var audioController = new FakeAudioController();
             var mediaController = new FakeMediaController();
             var settingsStore = new MemorySettingsStore();
             viewModel = new ConnectionStatusViewModel(
                 monitor,
-                new FakeAudioController(),
+                audioController,
                 mediaController,
                 settingsStore,
                 new FakeStartupManager(),
@@ -97,13 +98,20 @@ public sealed class WidgetWindowLifecycleTests
             PumpDispatcherFor(TimeSpan.FromMilliseconds(220));
             AssertState(window, viewModel, WidgetDisplayMode.Offline, 66, 66);
 
+            var pendingMedia = new TaskCompletionSource<SpeakerMediaSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+            mediaController.PendingSnapshot = pendingMedia.Task;
             monitor.SetSnapshot(Snapshot(SpeakerConnectionState.Connected));
             PumpDispatcherFor(TimeSpan.FromMilliseconds(320));
             AssertState(window, viewModel, WidgetDisplayMode.Compact, 350, 125);
 
+            audioController.VolumePercent = 24;
             viewModel.ActivateWidgetAsync().GetAwaiter().GetResult();
             PumpDispatcherFor(TimeSpan.FromMilliseconds(320));
             AssertState(window, viewModel, WidgetDisplayMode.Expanded, 388, 250);
+            Assert.Equal(24, ((Slider)window.FindName("VolumeSlider")).Value);
+            Assert.False(pendingMedia.Task.IsCompleted);
+            mediaController.PendingSnapshot = null;
+            pendingMedia.SetResult(mediaController.Current);
             var railBrand = (TextBlock)window.FindName("RailBrandLabel");
             Assert.Equal(11, railBrand.FontSize);
             Assert.Equal(FontWeights.Medium, railBrand.FontWeight);
@@ -167,6 +175,12 @@ public sealed class WidgetWindowLifecycleTests
             Assert.False(window.IsVisible);
             Assert.True(settingsWindow.IsVisible);
             AssertSettingsWindowLayout(settingsWindow, window, viewModel, settingsStore);
+
+            audioController.VolumePercent = 51;
+            window.ShowFromTray();
+            PumpDispatcherFor(TimeSpan.FromMilliseconds(320));
+            Assert.True(window.IsVisible);
+            Assert.Equal(51, ((Slider)window.FindName("VolumeSlider")).Value);
         }
         finally
         {
@@ -286,7 +300,6 @@ public sealed class WidgetWindowLifecycleTests
         hidden.CloseWithoutRestoringWidget();
         PumpDispatcher();
         Assert.False(widgetWindow.IsVisible);
-        widgetWindow.ShowFromTray();
     }
 
     private static void AssertSettingsContentSpacing(SettingsWindow settingsWindow)
@@ -454,8 +467,14 @@ public sealed class WidgetWindowLifecycleTests
 
     private sealed class FakeAudioController : IAudioEndpointController
     {
+        private static readonly AudioEndpointDescriptor Endpoint = new(
+            "test-a2dp", "Xiaomi Sound Party", AudioEndpointDirection.Render,
+            SpeakerAudioEndpointKind.A2dpRender, IsActive: true, IsDefault: true);
+
+        public int VolumePercent { get; set; } = 4;
+
         public ValueTask<SpeakerAudioSnapshot> GetSnapshotAsync(SpeakerDevice device, CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(SpeakerAudioSnapshot.Unavailable(DateTimeOffset.UtcNow));
+            ValueTask.FromResult(new SpeakerAudioSnapshot([Endpoint], VolumePercent, false, true, DateTimeOffset.UtcNow));
         public ValueTask<AudioControlResult> SetVolumeAsync(SpeakerDevice device, double volumePercent, CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(AudioControlResult.Success);
         public ValueTask<AudioControlResult> SetMutedAsync(SpeakerDevice device, bool isMuted, CancellationToken cancellationToken = default) =>
@@ -467,9 +486,12 @@ public sealed class WidgetWindowLifecycleTests
     private sealed class FakeMediaController : IMediaSessionController
     {
         public SpeakerMediaSnapshot Current { get; set; } = SpeakerMediaSnapshot.Empty(DateTimeOffset.UtcNow);
+        public Task<SpeakerMediaSnapshot>? PendingSnapshot { get; set; }
 
         public ValueTask<SpeakerMediaSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(Current);
+            PendingSnapshot is { } pending
+                ? new ValueTask<SpeakerMediaSnapshot>(pending.WaitAsync(cancellationToken))
+                : ValueTask.FromResult(Current);
         public ValueTask<bool> TogglePlayPauseAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(true);
         public ValueTask<bool> SkipPreviousAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(true);
         public ValueTask<bool> SkipNextAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(true);

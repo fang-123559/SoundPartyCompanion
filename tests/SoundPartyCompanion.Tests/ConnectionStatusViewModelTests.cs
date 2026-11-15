@@ -44,6 +44,117 @@ public sealed class ConnectionStatusViewModelTests
     }
 
     [Fact]
+    public async Task AudioRefreshAndPollingContinueWhileMediaReadIsPending()
+    {
+        var now = DateTimeOffset.Now;
+        var monitor = new FakeConnectionMonitor(Snapshot(SpeakerConnectionState.ConnectedAsOutput, now));
+        var endpoint = new AudioEndpointDescriptor(
+            "test-a2dp", "Xiaomi Sound Party", AudioEndpointDirection.Render,
+            SpeakerAudioEndpointKind.A2dpRender, IsActive: true, IsDefault: true);
+        var audioController = new FakeAudioController(new SpeakerAudioSnapshot([endpoint], 4, false, true, now));
+        var pendingMedia = new TaskCompletionSource<SpeakerMediaSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var mediaController = new FakeMediaController(SpeakerMediaSnapshot.Empty(now), pendingMedia.Task);
+        using var viewModel = new ConnectionStatusViewModel(
+            monitor, audioController, mediaController, new MemorySettingsStore(),
+            new FakeStartupManager(), AppSettings.Default);
+
+        await mediaController.SnapshotRequested.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await WaitUntilAsync(() => viewModel.VolumePercent == 4);
+
+        audioController.Current = audioController.Current with { VolumePercent = 28, IsMuted = true };
+        await viewModel.RefreshAudioAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.Equal(28, viewModel.VolumePercent);
+        Assert.True(viewModel.IsMuted);
+
+        audioController.Current = audioController.Current with { VolumePercent = 63, IsMuted = false };
+        await WaitUntilAsync(() => viewModel.VolumePercent == 63 && !viewModel.IsMuted);
+        Assert.False(pendingMedia.Task.IsCompleted);
+
+        pendingMedia.SetResult(new SpeakerMediaSnapshot(
+            "test-session", "Track", "Artist", MediaPlaybackState.Playing,
+            CanPlayPause: true, CanSkipPrevious: true, CanSkipNext: true, now));
+        await WaitUntilAsync(() => viewModel.TrackTitle == "Track");
+        Assert.Equal(63, viewModel.VolumePercent);
+    }
+
+    [Fact]
+    public async Task EndpointNotificationUpdatesVolumeBeforeAnOlderReadCompletes()
+    {
+        var now = DateTimeOffset.Now;
+        var monitor = new FakeConnectionMonitor(Snapshot(SpeakerConnectionState.ConnectedAsOutput, now));
+        var endpoint = new AudioEndpointDescriptor(
+            "test-a2dp", "Xiaomi Sound Party", AudioEndpointDirection.Render,
+            SpeakerAudioEndpointKind.A2dpRender, IsActive: true, IsDefault: true);
+        var audioController = new FakeAudioController(new SpeakerAudioSnapshot([endpoint], 26, false, true, now));
+        using var viewModel = new ConnectionStatusViewModel(
+            monitor, audioController, new FakeMediaController(SpeakerMediaSnapshot.Empty(now)),
+            new MemorySettingsStore(), new FakeStartupManager(), AppSettings.Default);
+        var onVolumeChanged = await audioController.VolumeCallback.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.Equal(26, viewModel.VolumePercent);
+
+        var readStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pendingRead = new TaskCompletionSource<SpeakerAudioSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        audioController.ReadSnapshot = cancellationToken =>
+        {
+            readStarted.TrySetResult();
+            return new ValueTask<SpeakerAudioSnapshot>(pendingRead.Task.WaitAsync(cancellationToken));
+        };
+        var refresh = viewModel.RefreshAudioAsync();
+        await readStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+
+        onVolumeChanged(34, true);
+        await WaitUntilAsync(() => viewModel.VolumePercent == 34 && viewModel.IsMuted);
+        Assert.False(refresh.IsCompleted);
+
+        var oldSnapshot = audioController.Current;
+        audioController.Current = oldSnapshot with { VolumePercent = 34, IsMuted = true };
+        audioController.ReadSnapshot = null;
+        pendingRead.SetResult(oldSnapshot);
+        await refresh.WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.Equal(34, viewModel.VolumePercent);
+        Assert.True(viewModel.IsMuted);
+
+        monitor.RefreshSnapshot = Snapshot(SpeakerConnectionState.PairedOffline, now);
+        await viewModel.RefreshAsync();
+        onVolumeChanged(49, false);
+        Assert.Equal(0, viewModel.VolumePercent);
+    }
+
+    [Fact]
+    public async Task AudioControlsAndMessagesReflectIndependentReadFailures()
+    {
+        var now = DateTimeOffset.Now;
+        var monitor = new FakeConnectionMonitor(Snapshot(SpeakerConnectionState.Connected, now));
+        var endpoint = new AudioEndpointDescriptor(
+            "test-a2dp", "Xiaomi Sound Party", AudioEndpointDirection.Render,
+            SpeakerAudioEndpointKind.A2dpRender, IsActive: true, IsDefault: false);
+        var audioController = new FakeAudioController();
+        using var viewModel = new ConnectionStatusViewModel(
+            monitor, audioController, new FakeMediaController(SpeakerMediaSnapshot.Empty(now)),
+            new MemorySettingsStore(), new FakeStartupManager(), AppSettings.Default);
+
+        await viewModel.RefreshAudioAsync();
+        Assert.Equal("未找到可控的 A2DP 输出", viewModel.AudioSummaryText);
+
+        audioController.Current = new SpeakerAudioSnapshot([endpoint], null, false, false, now);
+        await viewModel.RefreshAudioAsync();
+        Assert.Equal("已找到 A2DP 输出，暂时无法读取音量", viewModel.AudioSummaryText);
+        Assert.True(viewModel.SetAsCurrentOutputCommand.CanExecute(null));
+        Assert.True(viewModel.ToggleMuteCommand.CanExecute(null));
+        Assert.False(viewModel.VolumeUpCommand.CanExecute(null));
+        Assert.Null(viewModel.ReportedVolumePercent);
+        Assert.False(viewModel.ReportedMuteState);
+
+        audioController.Current = new SpeakerAudioSnapshot([endpoint], 26, null, false, now);
+        await viewModel.RefreshAudioAsync();
+        Assert.Equal("音量 26%", viewModel.AudioSummaryText);
+        Assert.True(viewModel.VolumeUpCommand.CanExecute(null));
+        Assert.False(viewModel.ToggleMuteCommand.CanExecute(null));
+        Assert.Equal(26, viewModel.ReportedVolumePercent);
+        Assert.Null(viewModel.ReportedMuteState);
+    }
+
+    [Fact]
     public void ConnectedBatteryIsShownWithWindowsSource()
     {
         var now = DateTimeOffset.Now;
@@ -220,12 +331,22 @@ public sealed class ConnectionStatusViewModelTests
         }
     }
 
-    private sealed class FakeAudioController : IAudioEndpointController
+    private sealed class FakeAudioController(SpeakerAudioSnapshot? initial = null) : IAudioEndpointController
     {
+        public SpeakerAudioSnapshot Current { get; set; } = initial ?? SpeakerAudioSnapshot.Unavailable(DateTimeOffset.Now);
+        public Func<CancellationToken, ValueTask<SpeakerAudioSnapshot>>? ReadSnapshot { get; set; }
+        public TaskCompletionSource<Action<double, bool>> VolumeCallback { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public IDisposable? WatchVolume(string endpointId, Action<double, bool> volumeChanged)
+        {
+            VolumeCallback.TrySetResult(volumeChanged);
+            return null;
+        }
+
         public ValueTask<SpeakerAudioSnapshot> GetSnapshotAsync(
             SpeakerDevice device,
             CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(SpeakerAudioSnapshot.Unavailable(DateTimeOffset.Now));
+            ReadSnapshot?.Invoke(cancellationToken) ?? ValueTask.FromResult(Current);
 
         public ValueTask<AudioControlResult> SetVolumeAsync(
             SpeakerDevice device,
@@ -242,10 +363,17 @@ public sealed class ConnectionStatusViewModelTests
             CancellationToken cancellationToken = default) => ValueTask.FromResult(AudioControlResult.Success);
     }
 
-    private sealed class FakeMediaController(SpeakerMediaSnapshot current) : IMediaSessionController
+    private sealed class FakeMediaController(SpeakerMediaSnapshot current, Task<SpeakerMediaSnapshot>? pending = null) : IMediaSessionController
     {
-        public ValueTask<SpeakerMediaSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(current);
+        public TaskCompletionSource SnapshotRequested { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public ValueTask<SpeakerMediaSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default)
+        {
+            SnapshotRequested.TrySetResult();
+            return pending is null
+                ? ValueTask.FromResult(current)
+                : new ValueTask<SpeakerMediaSnapshot>(pending.WaitAsync(cancellationToken));
+        }
         public ValueTask<bool> TogglePlayPauseAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(true);
         public ValueTask<bool> SkipPreviousAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(true);
         public ValueTask<bool> SkipNextAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(true);

@@ -84,6 +84,7 @@ public partial class MainWindow : Window
         WindowState = WindowState.Normal;
         Show();
         Activate();
+        _ = _viewModel.RefreshAudioAsync();
     }
 
     protected override void OnSourceInitialized(EventArgs e)

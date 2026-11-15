@@ -147,10 +147,10 @@ internal interface IAudioPropertyStore
 internal interface IAudioEndpointVolume
 {
     [PreserveSig]
-    int RegisterControlChangeNotify(nint callback);
+    int RegisterControlChangeNotify([MarshalAs(UnmanagedType.Interface)] IAudioEndpointVolumeCallback callback);
 
     [PreserveSig]
-    int UnregisterControlChangeNotify(nint callback);
+    int UnregisterControlChangeNotify([MarshalAs(UnmanagedType.Interface)] IAudioEndpointVolumeCallback callback);
 
     [PreserveSig]
     int GetChannelCount(out uint channelCount);
@@ -199,6 +199,23 @@ internal interface IAudioEndpointVolume
 
     [PreserveSig]
     int GetVolumeRange(out float minimumDecibels, out float maximumDecibels, out float incrementDecibels);
+}
+
+[ComVisible(true)]
+[Guid("657804FA-D6AD-4496-8A60-352752AF4F89")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface IAudioEndpointVolumeCallback
+{
+    [PreserveSig]
+    int OnNotify(nint notification);
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal readonly struct AudioVolumeNotification
+{
+    public readonly Guid EventContext;
+    public readonly int IsMuted;
+    public readonly float MasterVolume;
 }
 
 [ComImport]
