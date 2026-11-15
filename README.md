@@ -6,6 +6,13 @@
 
 ## 安装与首次使用
 
+如果不熟悉 GitHub，可以请 AI 助手帮你下载 Windows 安装包并指导安装。
+
+- **AI 对话**：复制[下载提示词](https://github.com/fang-123559/Sound-Party-Companion-AI-Agent-download/blob/main/download-with-ai.txt)并发送给豆包或其他 AI 聊天助手，请它提供下载直链和操作步骤。
+- **Agent Skill**：[下载 Skill ZIP](https://github.com/fang-123559/Sound-Party-Companion-AI-Agent-download/releases/latest/download/download-sound-party-companion.zip)并导入支持 Skill 的 Agent。有本机权限的 Agent 可以代下载并核对 SHA256。
+
+豆包对话和豆包工作是已实测的示例，可查看[导入说明及实测反馈](https://github.com/fang-123559/Sound-Party-Companion-AI-Agent-download#豆包工作)。
+
 若 GitHub 下载不便，可使用 [夸克网盘备用下载（v0.1.1，Windows x64）](https://pan.quark.cn/s/70506127e681)。下载后请用下方同版本的 SHA256 校验文件核对安装包。
 
 1. 在 Windows“设置 → 蓝牙和设备”配对音箱，并保持蓝牙开启。
