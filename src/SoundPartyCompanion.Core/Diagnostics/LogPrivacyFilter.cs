@@ -18,6 +18,13 @@ public static class LogPrivacyFilter
     private static readonly Regex SafeEvent = new(
         @"\A(?:Application starting\.|Application exiting with code -?\d{1,10}\.|(?:Unhandled UI|Unhandled application-domain|Unobserved task) exception\.(?: ExceptionType=[A-Za-z0-9_]{1,128}; HResult=0x[0-9A-F]{8})?|(?:Connection refresh|Battery refresh|Bluetooth discovery|Audio endpoint snapshot|Audio endpoint control|Default audio output probe|Media session snapshot|Media session control|Diagnostic export) failed \([A-Za-z0-9_]{1,128}\)\.|Classic Bluetooth radio enumeration was skipped \([A-Za-z0-9_]{1,128}\)\.|Startup state could not be (?:read|changed) \([A-Za-z0-9_]{1,128}\)\.|Local (?:settings|speaker selection) could not be (?:loaded|saved) \([A-Za-z0-9_]{1,128}\)\.|Default audio output switch needs user action \([A-Za-z0-9_]{1,128}\)\.|Diagnostic export completed\.)\z",
         RegexOptions.CultureInvariant | RegexOptions.Compiled, MatchTimeout);
+    private const string UtcTimestamp = @"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{7}Z";
+    private static readonly Regex AudioProbeEvent = new(
+        $@"\AAudio probe completed\. Operation=(?:Snapshot|DefaultOutput) StartedUtc={UtcTimestamp} DurationMs=[0-9]{{1,10}} EndpointMs=[0-9]{{1,10}} ControlsMs=[0-9]{{1,10}} IdentityReads=[0-9]{{1,6}} Outcome=(?:Offline|NoDefault|Speaker|Other|NoEndpoint|Ready|ReadFailed|Failed|Canceled)\z",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled, MatchTimeout);
+    private static readonly Regex SpeakerTimingEvent = new(
+        $@"\A(?:Speaker endpoint activation watch (?:started|failed)\.|Audio endpoint activation lookup failed\.|Speaker playback endpoint became active\. EventUtc={UtcTimestamp}|Speaker volume first read\. ReadUtc={UtcTimestamp} DisplayUtc={UtcTimestamp}|Windows default playback changed\. EventUtc={UtcTimestamp} Role=(?:Console|Multimedia|Communications) Target=(?:Speaker|Other|None|Unknown))\z",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled, MatchTimeout);
 
     public static string RedactText(string text, string? userName = null)
     {
@@ -54,7 +61,7 @@ public static class LogPrivacyFilter
                     CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp)) continue;
 
                 var message = RedactText(entry.Groups["message"].Value);
-                var safeMessage = SafeEvent.IsMatch(message)
+                var safeMessage = SafeEvent.IsMatch(message) || SpeakerTimingEvent.IsMatch(message) || AudioProbeEvent.IsMatch(message)
                     ? message
                     : "[omitted: non-allowlisted event]";
                 result.Append(timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))

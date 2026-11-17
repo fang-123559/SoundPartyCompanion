@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using SoundPartyCompanion.App.Infrastructure;
 using SoundPartyCompanion.Core.Audio;
 using SoundPartyCompanion.Core.Devices;
+using SoundPartyCompanion.Core.Diagnostics;
 using SoundPartyCompanion.Core.Media;
 using SoundPartyCompanion.Core.Settings;
 
@@ -21,6 +22,7 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
     private readonly IMediaSessionController _mediaController;
     private readonly IAppSettingsStore _settingsStore;
     private readonly IStartupManager _startupManager;
+    private readonly IAppLogger? _logger;
     private readonly CancellationTokenSource _runtimeCancellation = new();
     private readonly SemaphoreSlim _audioRefreshGate = new(1, 1);
     private readonly SemaphoreSlim _mediaRefreshGate = new(1, 1);
@@ -31,6 +33,7 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
     private AppSettings _settings;
     private SpeakerConnectionState _connectionState = SpeakerConnectionState.PairedOffline;
     private string? _connectedDeviceKey;
+    private Guid? _connectedContainerId;
     private int _connectionVersion;
     private WidgetDisplayMode _widgetMode = WidgetDisplayMode.Compact;
     private bool _expandedRequested;
@@ -60,6 +63,13 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
     private string _batteryDisplayText = "--";
     private bool _batteryReminderInitialized;
     private bool _disposed;
+    private bool _mediaControlPending;
+    private int _mediaControlVersion;
+    private string _mediaControlStatus = string.Empty;
+    public string MediaDetailText => string.IsNullOrEmpty(_mediaControlStatus) ? TrackArtist : _mediaControlStatus;
+    public string VolumeDisplayText => ReportedVolumePercent is double value ? $"{Math.Round(value):0}%" : "--";
+    public string VolumeValueText => ReportedVolumePercent is double value ? $"{Math.Round(value):0}" : "--";
+    public bool IsVolumeAvailable => CanAdjustVolume;
 
     public ConnectionStatusViewModel(
         IConnectionMonitor monitor,
@@ -67,13 +77,15 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         IMediaSessionController mediaController,
         IAppSettingsStore settingsStore,
         IStartupManager startupManager,
-        AppSettings initialSettings)
+        AppSettings initialSettings,
+        IAppLogger? logger = null)
     {
         _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
         _audioController = audioController ?? throw new ArgumentNullException(nameof(audioController));
         _mediaController = mediaController ?? throw new ArgumentNullException(nameof(mediaController));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _startupManager = startupManager ?? throw new ArgumentNullException(nameof(startupManager));
+        _logger = logger;
         _settings = AppSettingsRules.Normalize(initialSettings) with
         {
             StartWithWindows = startupManager.IsEnabled
@@ -83,9 +95,9 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         VolumeDownCommand = new AsyncRelayCommand(() => ChangeVolumeAsync(-5), () => CanAdjustVolume);
         ToggleMuteCommand = new AsyncRelayCommand(ToggleMuteAsync, () => IsConnected && _audioSnapshot.IsMuted.HasValue);
         SetAsCurrentOutputCommand = new AsyncRelayCommand(SetAsCurrentOutputAsync, () => CanSetAsCurrentOutput);
-        PreviousCommand = new AsyncRelayCommand(PreviousAsync, () => _mediaSnapshot.CanSkipPrevious);
-        PlayPauseCommand = new AsyncRelayCommand(PlayPauseAsync, () => _mediaSnapshot.CanPlayPause);
-        NextCommand = new AsyncRelayCommand(NextAsync, () => _mediaSnapshot.CanSkipNext);
+        PreviousCommand = new AsyncRelayCommand(PreviousAsync, () => !_mediaControlPending && _mediaSnapshot.CanSkipPrevious);
+        PlayPauseCommand = new AsyncRelayCommand(PlayPauseAsync, () => !_mediaControlPending && _mediaSnapshot.CanPlayPause);
+        NextCommand = new AsyncRelayCommand(NextAsync, () => !_mediaControlPending && _mediaSnapshot.CanSkipNext);
         ToggleExpandedCommand = new AsyncRelayCommand(ToggleExpandedAsync, () => IsConnected);
         CollapseCommand = new AsyncRelayCommand(CollapseAsync, () => WidgetMode == WidgetDisplayMode.Expanded);
         CloseOfflineDetailsCommand = new AsyncRelayCommand(CloseOfflineDetailsAsync, () => WidgetMode == WidgetDisplayMode.OfflineDetails);
@@ -369,11 +381,14 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
     {
         var wasConnected = IsConnected;
         var connectedDeviceKey = snapshot.IsConnected ? snapshot.DeviceKey : null;
+        var connectedContainerId = snapshot.IsConnected ? snapshot.ContainerId : null;
         var connectionChanged = wasConnected != snapshot.IsConnected ||
-            !string.Equals(_connectedDeviceKey, connectedDeviceKey, StringComparison.Ordinal);
+            !string.Equals(_connectedDeviceKey, connectedDeviceKey, StringComparison.Ordinal) ||
+            _connectedContainerId != connectedContainerId;
         if (connectionChanged)
         {
             _connectedDeviceKey = connectedDeviceKey;
+            _connectedContainerId = connectedContainerId;
             Interlocked.Increment(ref _connectionVersion);
             StopVolumeWatch();
         }
@@ -384,15 +399,16 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         if (snapshot.IsConnected || wasConnected) _offlineDetailsRequested = false;
         LastCheckedText = $"{snapshot.ObservedAt.ToLocalTime():HH:mm:ss} 更新";
         ApplyBattery(snapshot.Battery, snapshot.IsConnected);
-        (StatusText, DetailText) = snapshot.State switch
+        if (!snapshot.IsConnected)
         {
-            SpeakerConnectionState.BluetoothUnavailable => ("电脑蓝牙已关闭", "打开蓝牙后，组件会自动重新检测"),
-            SpeakerConnectionState.PairedOffline when snapshot.DeviceKey is null => ("未找到目标音箱", "请确认音箱已与此电脑配对"),
-            SpeakerConnectionState.PairedOffline => ("音箱未连接", "打开音箱后会自动恢复连接"),
-            SpeakerConnectionState.Connected => ("已连接", "当前声音未输出到此音箱"),
-            SpeakerConnectionState.ConnectedAsOutput => ("已连接 · 当前输出", "立体声输出 · A2DP"),
-            _ => throw new ArgumentOutOfRangeException(nameof(snapshot))
-        };
+            (StatusText, DetailText) = snapshot.State switch
+            {
+                SpeakerConnectionState.BluetoothUnavailable => ("电脑蓝牙已关闭", "打开蓝牙后，组件会自动重新检测"),
+                SpeakerConnectionState.PairedOffline when snapshot.DeviceKey is null => ("未找到目标音箱", "请确认音箱已与此电脑配对"),
+                SpeakerConnectionState.PairedOffline => ("音箱未连接", "打开音箱后会自动恢复连接"),
+                _ => throw new ArgumentOutOfRangeException(nameof(snapshot))
+            };
+        }
         UpdateWidgetMode();
         if (!snapshot.IsConnected || connectionChanged)
         {
@@ -531,7 +547,7 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
                     watchAtStart.Latest is { } latest && !ReferenceEquals(latest, notificationAtStart))
                 {
                     // The notification arrived while the older read was in flight.
-                    snapshot = snapshot with { VolumePercent = latest.Percent, IsMuted = latest.IsMuted };
+                    snapshot = snapshot with { VolumePercent = latest.Percent, IsMuted = latest.IsMuted, ObservedAt = latest.ObservedAt };
                 }
                 ApplyAudioSnapshot(snapshot);
                 UpdateVolumeWatch(endpoint?.EndpointId, device, connectionVersion);
@@ -580,14 +596,19 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
 
     private void HandleVolumeNotification(VolumeWatch watch, SpeakerDevice device, int connectionVersion, double percent, bool isMuted)
     {
-        var notification = new VolumeNotification(percent, isMuted);
+        var notification = new VolumeNotification(percent, isMuted, DateTimeOffset.UtcNow);
         watch.Latest = notification;
         _ = RunOnUiAsync(() =>
         {
             if (!ReferenceEquals(_volumeWatch, watch) || !CanApplyRuntimeSnapshot(device, connectionVersion) ||
                 !ReferenceEquals(watch.Latest, notification)) return;
 
-            ApplyAudioSnapshot(_audioSnapshot with { VolumePercent = notification.Percent, IsMuted = notification.IsMuted });
+            ApplyAudioSnapshot(_audioSnapshot with
+            {
+                VolumePercent = notification.Percent,
+                IsMuted = notification.IsMuted,
+                ObservedAt = notification.ObservedAt
+            });
         });
     }
 
@@ -598,7 +619,7 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         watch?.Subscription?.Dispose();
     }
 
-    private sealed record VolumeNotification(double Percent, bool IsMuted);
+    private sealed record VolumeNotification(double Percent, bool IsMuted, DateTimeOffset ObservedAt);
 
     private sealed class VolumeWatch(string endpointId)
     {
@@ -617,6 +638,7 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
             if (!entered) return;
 
             var connectionVersion = Volatile.Read(ref _connectionVersion);
+            var mediaVersion = Volatile.Read(ref _mediaControlVersion);
             var device = GetConnectedDevice();
             if (device is null) return;
 
@@ -634,7 +656,8 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
 
             await RunOnUiAsync(() =>
             {
-                if (CanApplyRuntimeSnapshot(device, connectionVersion)) ApplyMediaSnapshot(snapshot);
+                if (!_mediaControlPending && mediaVersion == Volatile.Read(ref _mediaControlVersion) &&
+                    CanApplyRuntimeSnapshot(device, connectionVersion)) ApplyMediaSnapshot(snapshot);
             }).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -649,21 +672,40 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         var connection = _monitor.Current;
         return !_runtimeCancellation.IsCancellationRequested && IsConnected && connection.IsConnected &&
             connectionVersion == Volatile.Read(ref _connectionVersion) &&
+            connection.ContainerId == device.ContainerId &&
             string.Equals(connection.DeviceKey, device.DeviceKey, StringComparison.Ordinal);
     }
 
     private void ApplyAudioSnapshot(SpeakerAudioSnapshot snapshot)
     {
+        var firstVolumeRead = _logger is not null && snapshot.VolumePercent.HasValue &&
+            (!_audioSnapshot.VolumePercent.HasValue ||
+             AudioEndpointSelection.SelectA2dpEndpoint(_audioSnapshot.Endpoints)?.EndpointId !=
+                 AudioEndpointSelection.SelectA2dpEndpoint(snapshot.Endpoints)?.EndpointId);
         _audioSnapshot = snapshot;
+        var hasA2dp = snapshot.HasA2dpEndpoint;
+        var isCurrentOutput = IsConnected && hasA2dp && snapshot.IsCurrentOutput;
+        if (IsConnected)
+        {
+            (StatusText, DetailText) = isCurrentOutput
+                ? ("已连接 · 当前输出", "立体声输出 · A2DP")
+                : ("已连接", hasA2dp ? "当前声音未输出到此音箱" : "正在等待音频连接");
+        }
+
+        var currentOutputSuffix = isCurrentOutput ? " · 当前输出" : string.Empty;
         if (!IsConnected) AudioSummaryText = "音频控制将在连接后可用";
-        else if (!_audioSnapshot.HasA2dpEndpoint) AudioSummaryText = "未找到可控的 A2DP 输出";
-        else if (!_audioSnapshot.VolumePercent.HasValue) AudioSummaryText = "已找到 A2DP 输出，暂时无法读取音量";
-        else if (_audioSnapshot.IsMuted == true) AudioSummaryText = "已静音 · A2DP";
-        else AudioSummaryText = $"音量 {Math.Round(_audioSnapshot.VolumePercent.Value):0}%{(_audioSnapshot.IsCurrentOutput ? " · 当前输出" : string.Empty)}";
+        else if (!hasA2dp) AudioSummaryText = "正在等待音频连接";
+        else if (!snapshot.VolumePercent.HasValue) AudioSummaryText = $"已找到 A2DP 输出，暂时无法读取音量{currentOutputSuffix}";
+        else if (snapshot.IsMuted == true) AudioSummaryText = $"已静音 · A2DP{currentOutputSuffix}";
+        else AudioSummaryText = $"音量 {Math.Round(snapshot.VolumePercent.Value):0}%{currentOutputSuffix}";
 
         VolumePercent = _audioSnapshot.VolumePercent ?? 0;
+        OnPropertyChanged(nameof(VolumeDisplayText));
+        OnPropertyChanged(nameof(VolumeValueText));
+        OnPropertyChanged(nameof(IsVolumeAvailable));
+        OnPropertyChanged(nameof(ReportedVolumePercent));
         IsMuted = _audioSnapshot.IsMuted == true;
-        IsCurrentOutput = _audioSnapshot.IsCurrentOutput;
+        IsCurrentOutput = isCurrentOutput;
         MuteCommandText = _audioSnapshot.IsMuted switch
         {
             true => "取消静音",
@@ -674,10 +716,16 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         VolumeDownCommand.NotifyCanExecuteChanged();
         ToggleMuteCommand.NotifyCanExecuteChanged();
         SetAsCurrentOutputCommand.NotifyCanExecuteChanged();
+        if (firstVolumeRead)
+        {
+            _logger?.Write(AppLogLevel.Information,
+                $"Speaker volume first read. ReadUtc={snapshot.ObservedAt.UtcDateTime:O} DisplayUtc={DateTime.UtcNow:O}");
+        }
     }
 
     private void ApplyMediaSnapshot(SpeakerMediaSnapshot snapshot)
     {
+        if (_mediaSnapshot.SessionId != snapshot.SessionId) _mediaControlStatus = string.Empty;
         _mediaSnapshot = snapshot;
         PlayPauseCommandText = _mediaSnapshot.IsPlaying ? "暂停" : "播放";
         PlayPauseGlyph = _mediaSnapshot.IsPlaying ? "Ⅱ" : "▶";
@@ -692,6 +740,7 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         PreviousCommand.NotifyCanExecuteChanged();
         PlayPauseCommand.NotifyCanExecuteChanged();
         NextCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(MediaDetailText));
     }
 
     private SpeakerDevice? GetConnectedDevice()
@@ -699,6 +748,7 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         var snapshot = _monitor.Current;
         return snapshot.IsConnected && !string.IsNullOrWhiteSpace(snapshot.DeviceKey) && !string.IsNullOrWhiteSpace(snapshot.DisplayName)
             ? new SpeakerDevice(snapshot.DeviceKey, snapshot.DisplayName, true, true, snapshot.ObservedAt)
+                { ContainerId = snapshot.ContainerId }
             : null;
     }
 
@@ -727,9 +777,40 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         await RefreshAudioAsync();
     }
 
-    private async Task PreviousAsync() { await _mediaController.SkipPreviousAsync(_runtimeCancellation.Token); await RefreshMediaAsync(); }
-    private async Task PlayPauseAsync() { await _mediaController.TogglePlayPauseAsync(_runtimeCancellation.Token); await RefreshMediaAsync(); }
-    private async Task NextAsync() { await _mediaController.SkipNextAsync(_runtimeCancellation.Token); await RefreshMediaAsync(); }
+    private Task PreviousAsync() => ExecuteMediaAsync(_mediaController.SkipPreviousAsync);
+    private Task PlayPauseAsync() => ExecuteMediaAsync(_mediaController.TogglePlayPauseAsync);
+    private Task NextAsync() => ExecuteMediaAsync(_mediaController.SkipNextAsync);
+
+    private async Task ExecuteMediaAsync(Func<string, CancellationToken, ValueTask<bool>> execute)
+    {
+        var sessionId = _mediaSnapshot.SessionId;
+        if (sessionId is null || _mediaControlPending) return;
+        _mediaControlPending = true;
+        Interlocked.Increment(ref _mediaControlVersion);
+        SetMediaControlStatus("正在请求播放器…");
+        try
+        {
+            var succeeded = await Task.Run(() => execute(sessionId, _runtimeCancellation.Token).AsTask());
+            if (_mediaSnapshot.SessionId == sessionId)
+                SetMediaControlStatus(succeeded ? string.Empty : "播放器未执行操作，请在播放器中操作");
+        }
+        finally
+        {
+            _mediaControlPending = false;
+            Interlocked.Increment(ref _mediaControlVersion);
+            SetMediaControlStatus(_mediaControlStatus);
+        }
+        await RefreshMediaAsync();
+    }
+
+    private void SetMediaControlStatus(string status)
+    {
+        _mediaControlStatus = status;
+        OnPropertyChanged(nameof(MediaDetailText));
+        PreviousCommand.NotifyCanExecuteChanged();
+        PlayPauseCommand.NotifyCanExecuteChanged();
+        NextCommand.NotifyCanExecuteChanged();
+    }
 
     private void ShowAudioControlResult(AudioControlResult result)
     {
@@ -737,7 +818,7 @@ public sealed class ConnectionStatusViewModel : INotifyPropertyChanged, IDisposa
         {
             AudioControlResult.Success => "操作已应用",
             AudioControlResult.SpeakerOffline => "音箱当前离线",
-            AudioControlResult.EndpointNotFound => "未找到 A2DP 输出",
+            AudioControlResult.EndpointNotFound => "正在等待音频连接",
             AudioControlResult.UserActionRequired => "请在声音设置中选择音箱",
             _ => "音频操作失败"
         };

@@ -29,7 +29,10 @@ public sealed record AudioEndpointDescriptor(
     AudioEndpointDirection Direction,
     SpeakerAudioEndpointKind Kind,
     bool IsActive,
-    bool IsDefault);
+    bool IsDefault)
+{
+    public Guid? ContainerId { get; init; }
+}
 
 public sealed record SpeakerAudioSnapshot(
     IReadOnlyList<AudioEndpointDescriptor> Endpoints,

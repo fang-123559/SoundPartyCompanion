@@ -220,7 +220,7 @@ public sealed class SpeakerConnectionMonitor : IConnectionMonitor
                 SpeakerConnectionState.PairedOffline,
                 _selection.DeviceKey,
                 device?.DisplayName ?? _selection.DisplayName,
-                discovery.ObservedAt), isConnected: false);
+                discovery.ObservedAt) { ContainerId = device?.ContainerId }, isConnected: false);
         }
 
         await RefreshBatteryIfNeededAsync(device, cancellationToken).ConfigureAwait(false);
@@ -236,7 +236,7 @@ public sealed class SpeakerConnectionMonitor : IConnectionMonitor
                 : SpeakerConnectionState.Connected,
             device.DeviceKey,
             device.DisplayName,
-            discovery.ObservedAt), isConnected: true);
+            discovery.ObservedAt) { ContainerId = device.ContainerId }, isConnected: true);
     }
 
     private async ValueTask RefreshBatteryIfNeededAsync(
@@ -311,6 +311,7 @@ public sealed class SpeakerConnectionMonitor : IConnectionMonitor
             changed = Current.State != next.State ||
                 !string.Equals(Current.DeviceKey, next.DeviceKey, StringComparison.Ordinal) ||
                 !string.Equals(Current.DisplayName, next.DisplayName, StringComparison.Ordinal) ||
+                Current.ContainerId != next.ContainerId ||
                 Current.Battery != next.Battery;
             Current = next;
         }

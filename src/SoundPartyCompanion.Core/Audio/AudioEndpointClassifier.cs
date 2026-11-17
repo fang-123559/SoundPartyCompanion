@@ -9,11 +9,9 @@ public static class AudioEndpointClassifier
     private static readonly string[] HandsFreeMarkers =
     [
         "handsfree",
-        "headset",
         "agaudio",
         "免提",
-        "通话",
-        "耳麦"
+        "通话"
     ];
 
     public static bool NamesMatch(string deviceName, string endpointName)
@@ -29,16 +27,23 @@ public static class AudioEndpointClassifier
     {
         var normalizedDevice = Normalize(deviceName);
         return SupportedSpeakerNames.Any(name => Normalize(name) == normalizedDevice) &&
-            SupportedSpeakerNames.Any(name => NamesMatch(name, endpointName));
+            IsSupportedSpeakerEndpointName(endpointName);
     }
+
+    public static bool IsSupportedSpeakerEndpointName(string endpointName) =>
+        SupportedSpeakerNames.Any(name => NamesMatch(name, endpointName));
 
     public static SpeakerAudioEndpointKind Classify(
         string endpointName,
-        AudioEndpointDirection direction)
+        AudioEndpointDirection direction,
+        bool isSameDeviceContainer = false)
     {
         var normalizedName = Normalize(endpointName);
         var isHandsFree = HandsFreeMarkers.Any(marker =>
-            normalizedName.Contains(marker, StringComparison.Ordinal));
+            normalizedName.Contains(marker, StringComparison.Ordinal)) ||
+            (!isSameDeviceContainer &&
+             (normalizedName.Contains("headset", StringComparison.Ordinal) ||
+              normalizedName.Contains("耳麦", StringComparison.Ordinal)));
 
         if (direction == AudioEndpointDirection.Capture)
         {

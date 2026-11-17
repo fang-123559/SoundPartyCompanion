@@ -72,6 +72,27 @@ public sealed class DiagnosticExportTests
         Assert.DoesNotContain(message, filtered);
     }
 
+    [Theory]
+    [InlineData("Speaker endpoint activation watch started.")]
+    [InlineData("Speaker endpoint activation watch failed.")]
+    [InlineData("Audio endpoint activation lookup failed.")]
+    [InlineData("Speaker playback endpoint became active. EventUtc=2026-10-03T04:00:00.0000000Z")]
+    [InlineData("Speaker volume first read. ReadUtc=2026-10-03T04:00:19.0000000Z DisplayUtc=2026-10-03T04:00:19.0100000Z")]
+    [InlineData("Windows default playback changed. EventUtc=2026-10-03T04:00:18.0000000Z Role=Console Target=Speaker")]
+    [InlineData("Windows default playback changed. EventUtc=2026-10-03T04:00:18.0000000Z Role=Multimedia Target=Other")]
+    [InlineData("Windows default playback changed. EventUtc=2026-10-03T04:00:18.0000000Z Role=Communications Target=None")]
+    [InlineData("Windows default playback changed. EventUtc=2026-10-03T04:00:18.0000000Z Role=Multimedia Target=Unknown")]
+    [InlineData("Audio probe completed. Operation=Snapshot StartedUtc=2026-10-03T04:00:18.0000000Z DurationMs=20123 EndpointMs=20120 ControlsMs=2 IdentityReads=3 Outcome=Ready")]
+    [InlineData("Audio probe completed. Operation=DefaultOutput StartedUtc=2026-10-03T04:00:18.0000000Z DurationMs=2 EndpointMs=1 ControlsMs=0 IdentityReads=1 Outcome=Other")]
+    public void FilterForExport_KeepsOnlyTheKnownSpeakerTimingFields(string message)
+    {
+        var filtered = LogPrivacyFilter.FilterForExport(
+            $"{Stamp} [Information] {message}\n{Stamp} [Information] {message} synthetic-endpoint\n");
+        Assert.Contains(message, filtered);
+        Assert.Contains("[omitted: non-allowlisted event]", filtered);
+        Assert.DoesNotContain("synthetic-endpoint", filtered);
+    }
+
     [Fact]
     public void FilterForExport_DropsMalformedAndOversizedLines()
     {

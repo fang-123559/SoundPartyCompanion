@@ -6,9 +6,180 @@ using SoundPartyCompanion.Core.Diagnostics;
 
 namespace SoundPartyCompanion.Windows.Audio;
 
-public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : IAudioEndpointController
+public sealed class WindowsAudioEndpointController : IAudioEndpointController
 {
-    private readonly IAppLogger? _logger = logger;
+    private readonly IAppLogger? _logger;
+    private readonly Func<IMultimediaDeviceEnumerator> _createEnumerator;
+    private readonly object _timingGate = new();
+    private readonly Dictionary<string, (string Outcome, long LoggedAt)> _lastTimings = new();
+
+    public WindowsAudioEndpointController(IAppLogger? logger = null) : this(CoreAudioInterop.CreateEnumerator, logger) { }
+
+    internal WindowsAudioEndpointController(Func<IMultimediaDeviceEnumerator> createEnumerator, IAppLogger? logger = null)
+    {
+        _createEnumerator = createEnumerator;
+        _logger = logger;
+    }
+
+    public ValueTask<bool> IsCurrentOutputAsync(SpeakerDevice device, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(device);
+        cancellationToken.ThrowIfCancellationRequested();
+        var timing = new ProbeTiming("DefaultOutput");
+        IMultimediaDeviceEnumerator? enumerator = null;
+        IMultimediaDevice? endpoint = null;
+        var endpointStarted = Stopwatch.GetTimestamp();
+        try
+        {
+            if (!device.IsConnected)
+            {
+                timing.Outcome = "Offline";
+                return ValueTask.FromResult(false);
+            }
+            enumerator = _createEnumerator();
+            if (enumerator.GetDefaultAudioEndpoint(AudioDataFlow.Render, AudioDeviceRole.Multimedia, out endpoint) < 0)
+            {
+                timing.Outcome = "NoDefault";
+                return ValueTask.FromResult(false);
+            }
+            Marshal.ThrowExceptionForHR(endpoint.GetState(out var state));
+            if (state != AudioDeviceState.Active)
+            {
+                timing.Outcome = "NoDefault";
+                return ValueTask.FromResult(false);
+            }
+
+            var hasContainer = device.ContainerId.GetValueOrDefault() != Guid.Empty;
+            timing.IdentityReads++;
+            var (name, containerId) = CoreAudioInterop.GetEndpointIdentity(endpoint, hasContainer, device.ContainerId);
+            bool isCurrent;
+            if (hasContainer && containerId.HasValue)
+            {
+                // A container match identifies this single default endpoint without scanning others.
+                isCurrent = containerId == device.ContainerId &&
+                    AudioEndpointClassifier.Classify(name ?? string.Empty, AudioEndpointDirection.Render, true) ==
+                        SpeakerAudioEndpointKind.A2dpRender;
+            }
+            else
+            {
+                // Preserve the unique-alias fallback when Windows has no container property.
+                // Only inspect metadata; this path must never activate volume controls.
+                var matches = EnumerateMatchingEndpoints(enumerator, device, cancellationToken, timing);
+                isCurrent = AudioEndpointSelection.SelectA2dpEndpoint(matches)?.IsDefault == true;
+            }
+            timing.Outcome = isCurrent ? "Speaker" : "Other";
+            return ValueTask.FromResult(isCurrent);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            timing.Outcome = "Canceled";
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger?.Write(AppLogLevel.Warning, $"Default audio output probe failed ({exception.GetType().Name}).");
+            return ValueTask.FromResult(false);
+        }
+        finally
+        {
+            timing.EndpointMs = ElapsedMilliseconds(endpointStarted);
+            CoreAudioInterop.Release(endpoint);
+            CoreAudioInterop.Release(enumerator);
+            LogProbeTiming(timing);
+        }
+    }
+
+    public IDisposable? WatchSpeakerEndpointActivations(Func<Guid?>? getSpeakerContainerId = null)
+    {
+        IMultimediaDeviceEnumerator? enumerator = null;
+        nint callbackPointer = 0;
+        try
+        {
+            enumerator = _createEnumerator();
+            var callback = new PlaybackEndpointCallback(
+                (endpoint, timestamp) => LogSpeakerEndpointActivation(endpoint, timestamp, getSpeakerContainerId?.Invoke()),
+                (role, endpoint, timestamp) => LogDefaultPlaybackChange(role, endpoint, timestamp, getSpeakerContainerId?.Invoke()));
+            // MMDevice does not retain the callback interface. Keep this reference until unregistering.
+            callbackPointer = Marshal.GetComInterfaceForObject(callback, typeof(IMMNotificationClient));
+            Marshal.ThrowExceptionForHR(enumerator.RegisterEndpointNotificationCallback(callbackPointer));
+            var subscription = new EndpointActivationSubscription(enumerator, callbackPointer);
+            enumerator = null;
+            callbackPointer = 0;
+            _logger?.Write(AppLogLevel.Information, "Speaker endpoint activation watch started.");
+            return subscription;
+        }
+        catch (Exception)
+        {
+            _logger?.Write(AppLogLevel.Warning, "Speaker endpoint activation watch failed.");
+            return null;
+        }
+        finally
+        {
+            if (callbackPointer != 0) Marshal.Release(callbackPointer);
+            CoreAudioInterop.Release(enumerator);
+        }
+    }
+
+    private void LogSpeakerEndpointActivation(string endpointId, DateTimeOffset notifiedAt, Guid? speakerContainerId)
+    {
+        try
+        {
+            if (IsSupportedSpeakerPlaybackEndpoint(endpointId, speakerContainerId))
+            {
+                _logger?.Write(AppLogLevel.Information,
+                    $"Speaker playback endpoint became active. EventUtc={notifiedAt.UtcDateTime:O}");
+            }
+        }
+        catch (Exception)
+        {
+            _logger?.Write(AppLogLevel.Warning, "Audio endpoint activation lookup failed.");
+        }
+    }
+
+    private void LogDefaultPlaybackChange(int role, string? endpointId, DateTimeOffset notifiedAt, Guid? speakerContainerId)
+    {
+        var target = "None";
+        if (endpointId is not null)
+        {
+            try
+            {
+                target = IsSupportedSpeakerPlaybackEndpoint(endpointId, speakerContainerId) ? "Speaker" : "Other";
+            }
+            catch (Exception)
+            {
+                target = "Unknown";
+            }
+        }
+        _logger?.Write(AppLogLevel.Information,
+            $"Windows default playback changed. EventUtc={notifiedAt.UtcDateTime:O} Role={(AudioDeviceRole)role} Target={target}");
+    }
+
+    private bool IsSupportedSpeakerPlaybackEndpoint(string endpointId, Guid? speakerContainerId)
+    {
+        IMultimediaDeviceEnumerator? enumerator = null;
+        IMultimediaDevice? endpoint = null;
+        try
+        {
+            enumerator = _createEnumerator();
+            Marshal.ThrowExceptionForHR(enumerator.GetDevice(endpointId, out endpoint));
+            Marshal.ThrowExceptionForHR(((IMMEndpoint)endpoint).GetDataFlow(out var flow));
+            if (flow != AudioDataFlow.Render) return false;
+
+            var (name, containerId) = CoreAudioInterop.GetEndpointIdentity(endpoint,
+                speakerContainerId.GetValueOrDefault() != Guid.Empty, speakerContainerId);
+            var sameContainer = containerId.HasValue && containerId == speakerContainerId;
+            if (containerId.HasValue && !sameContainer) return false;
+
+            return (sameContainer || (name is not null && AudioEndpointClassifier.IsSupportedSpeakerEndpointName(name))) &&
+                AudioEndpointClassifier.Classify(name ?? string.Empty, AudioEndpointDirection.Render, sameContainer) ==
+                    SpeakerAudioEndpointKind.A2dpRender;
+        }
+        finally
+        {
+            CoreAudioInterop.Release(endpoint);
+            CoreAudioInterop.Release(enumerator);
+        }
+    }
 
     public ValueTask<SpeakerAudioSnapshot> GetSnapshotAsync(
         SpeakerDevice device,
@@ -17,21 +188,32 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
         ArgumentNullException.ThrowIfNull(device);
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!device.IsConnected)
-        {
-            return ValueTask.FromResult(SpeakerAudioSnapshot.Unavailable(DateTimeOffset.UtcNow));
-        }
-
+        var timing = new ProbeTiming("Snapshot");
         IMultimediaDeviceEnumerator? enumerator = null;
 
         try
         {
-            enumerator = CoreAudioInterop.CreateEnumerator();
-            var endpoints = EnumerateMatchingEndpoints(enumerator, device.DisplayName, cancellationToken);
+            if (!device.IsConnected)
+            {
+                timing.Outcome = "Offline";
+                return ValueTask.FromResult(SpeakerAudioSnapshot.Unavailable(DateTimeOffset.UtcNow));
+            }
+            IReadOnlyList<AudioEndpointDescriptor> endpoints;
+            var endpointStarted = Stopwatch.GetTimestamp();
+            try
+            {
+                enumerator = _createEnumerator();
+                endpoints = EnumerateMatchingEndpoints(enumerator, device, cancellationToken, timing);
+            }
+            finally
+            {
+                timing.EndpointMs = ElapsedMilliseconds(endpointStarted);
+            }
             var a2dpEndpoint = AudioEndpointSelection.SelectA2dpEndpoint(endpoints);
 
             if (a2dpEndpoint is null)
             {
+                timing.Outcome = "NoEndpoint";
                 return ValueTask.FromResult(new SpeakerAudioSnapshot(
                     endpoints,
                     null,
@@ -40,7 +222,10 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
                     DateTimeOffset.UtcNow));
             }
 
+            var controlsStarted = Stopwatch.GetTimestamp();
             var (volume, isMuted) = ReadControls(enumerator, a2dpEndpoint.EndpointId);
+            timing.ControlsMs = ElapsedMilliseconds(controlsStarted);
+            timing.Outcome = volume.HasValue && isMuted.HasValue ? "Ready" : "ReadFailed";
             return ValueTask.FromResult(new SpeakerAudioSnapshot(
                 endpoints,
                 volume,
@@ -50,6 +235,7 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            timing.Outcome = "Canceled";
             throw;
         }
         catch (Exception exception)
@@ -60,6 +246,7 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
         finally
         {
             CoreAudioInterop.Release(enumerator);
+            LogProbeTiming(timing);
         }
     }
 
@@ -70,7 +257,7 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
         IAudioEndpointVolume? endpointVolume = null;
         try
         {
-            enumerator = CoreAudioInterop.CreateEnumerator();
+            enumerator = _createEnumerator();
             Marshal.ThrowExceptionForHR(enumerator.GetDevice(endpointId, out endpoint));
             endpointVolume = CoreAudioInterop.ActivateEndpointVolume(endpoint);
             var callback = new EndpointVolumeCallback(volumeChanged);
@@ -123,8 +310,8 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
 
         try
         {
-            enumerator = CoreAudioInterop.CreateEnumerator();
-            var endpoints = EnumerateMatchingEndpoints(enumerator, device.DisplayName, cancellationToken);
+            enumerator = _createEnumerator();
+            var endpoints = EnumerateMatchingEndpoints(enumerator, device, cancellationToken);
             var a2dpEndpoint = AudioEndpointSelection.SelectA2dpEndpoint(endpoints);
 
             if (a2dpEndpoint is null)
@@ -186,8 +373,8 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
 
         try
         {
-            enumerator = CoreAudioInterop.CreateEnumerator();
-            var endpoints = EnumerateMatchingEndpoints(enumerator, device.DisplayName, cancellationToken);
+            enumerator = _createEnumerator();
+            var endpoints = EnumerateMatchingEndpoints(enumerator, device, cancellationToken);
             var a2dpEndpoint = AudioEndpointSelection.SelectA2dpEndpoint(endpoints);
 
             if (a2dpEndpoint is null)
@@ -233,14 +420,16 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
 
     private IReadOnlyList<AudioEndpointDescriptor> EnumerateMatchingEndpoints(
         IMultimediaDeviceEnumerator enumerator,
-        string deviceName,
-        CancellationToken cancellationToken)
+        SpeakerDevice device,
+        CancellationToken cancellationToken,
+        ProbeTiming? timing = null)
     {
         var endpoints = new List<AudioEndpointDescriptor>();
         IMultimediaDeviceCollection? collection = null;
         IMultimediaDevice? defaultDevice = null;
         string? defaultEndpointId = null;
         Exception? endpointFailure = null;
+        var readContainerId = device.ContainerId.GetValueOrDefault() != Guid.Empty;
 
         try
         {
@@ -255,7 +444,7 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
 
             Marshal.ThrowExceptionForHR(enumerator.EnumAudioEndpoints(
                 AudioDataFlow.Render,
-                AudioDeviceState.All,
+                AudioDeviceState.Active,
                 out collection));
             Marshal.ThrowExceptionForHR(collection.GetCount(out var count));
 
@@ -267,24 +456,29 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
                 try
                 {
                     Marshal.ThrowExceptionForHR(collection.Item(index, out endpoint));
-                    var friendlyName = CoreAudioInterop.GetFriendlyName(endpoint);
-
-                    if (string.IsNullOrWhiteSpace(friendlyName) ||
-                        (!AudioEndpointClassifier.NamesMatch(deviceName, friendlyName) &&
-                         !AudioEndpointClassifier.MatchesSupportedSpeakerAlias(deviceName, friendlyName)))
+                    // The endpoint may have disconnected since enumeration. Do not open its properties.
+                    Marshal.ThrowExceptionForHR(endpoint.GetState(out var state));
+                    if (state != AudioDeviceState.Active) continue;
+                    if (timing is not null) timing.IdentityReads++;
+                    var (friendlyName, containerId) = CoreAudioInterop.GetEndpointIdentity(endpoint, readContainerId, device.ContainerId);
+                    var sameContainer = containerId.HasValue && containerId == device.ContainerId;
+                    if (!sameContainer &&
+                        (containerId.HasValue || string.IsNullOrWhiteSpace(friendlyName) ||
+                         (!AudioEndpointClassifier.NamesMatch(device.DisplayName, friendlyName) &&
+                          !AudioEndpointClassifier.MatchesSupportedSpeakerAlias(device.DisplayName, friendlyName))))
                     {
                         continue;
                     }
 
-                    Marshal.ThrowExceptionForHR(endpoint.GetState(out var state));
                     var endpointId = CoreAudioInterop.GetEndpointId(endpoint);
+                    var endpointName = friendlyName ?? string.Empty;
                     endpoints.Add(new AudioEndpointDescriptor(
                         endpointId,
-                        friendlyName,
+                        endpointName,
                         AudioEndpointDirection.Render,
-                        AudioEndpointClassifier.Classify(friendlyName, AudioEndpointDirection.Render),
+                        AudioEndpointClassifier.Classify(endpointName, AudioEndpointDirection.Render),
                         state == AudioDeviceState.Active,
-                        string.Equals(endpointId, defaultEndpointId, StringComparison.Ordinal)));
+                        string.Equals(endpointId, defaultEndpointId, StringComparison.Ordinal)) { ContainerId = containerId });
                 }
                 catch (Exception exception)
                 {
@@ -297,7 +491,7 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
                 }
             }
 
-            var matches = AudioEndpointSelection.MatchSpeakerEndpoints(deviceName, endpoints);
+            var matches = AudioEndpointSelection.MatchSpeakerEndpoints(device.DisplayName, endpoints, device.ContainerId);
             if (AudioEndpointSelection.SelectA2dpEndpoint(matches) is null && endpointFailure is not null)
             {
                 LogSnapshotFailure(endpointFailure);
@@ -349,6 +543,34 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
         }
     }
 
+    private static long ElapsedMilliseconds(long started) => (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+
+    private sealed class ProbeTiming(string operation)
+    {
+        public string Operation { get; } = operation;
+        public DateTime StartedUtc { get; } = DateTime.UtcNow;
+        public long Started { get; } = Stopwatch.GetTimestamp();
+        public long EndpointMs { get; set; }
+        public long ControlsMs { get; set; }
+        public int IdentityReads { get; set; }
+        public string Outcome { get; set; } = "Failed";
+    }
+
+    private void LogProbeTiming(ProbeTiming timing)
+    {
+        if (_logger is null) return;
+        var duration = ElapsedMilliseconds(timing.Started);
+        lock (_timingGate)
+        {
+            // Log transitions immediately; bound repeated slow probes and healthy heartbeats.
+            if (_lastTimings.TryGetValue(timing.Operation, out var previous) && previous.Outcome == timing.Outcome &&
+                Stopwatch.GetElapsedTime(previous.LoggedAt) < TimeSpan.FromSeconds(duration >= 250 ? 5 : 30)) return;
+            _lastTimings[timing.Operation] = (timing.Outcome, Stopwatch.GetTimestamp());
+        }
+        _logger.Write(AppLogLevel.Information, FormattableString.Invariant(
+            $"Audio probe completed. Operation={timing.Operation} StartedUtc={timing.StartedUtc:O} DurationMs={duration} EndpointMs={timing.EndpointMs} ControlsMs={timing.ControlsMs} IdentityReads={timing.IdentityReads} Outcome={timing.Outcome}"));
+    }
+
     private static bool OpenSoundSettings()
     {
         try
@@ -362,6 +584,57 @@ public sealed class WindowsAudioEndpointController(IAppLogger? logger = null) : 
         catch
         {
             return false;
+        }
+    }
+
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.None)]
+    public sealed class PlaybackEndpointCallback(
+        Action<string, DateTimeOffset> activation,
+        Action<int, string?, DateTimeOffset> defaultChanged) : IMMNotificationClient
+    {
+        public int OnDeviceStateChanged(string endpointId, uint state)
+        {
+            if (state == (uint)AudioDeviceState.Active)
+            {
+                var notifiedAt = DateTimeOffset.UtcNow;
+                ThreadPool.QueueUserWorkItem(_ => activation(endpointId, notifiedAt));
+            }
+            return 0;
+        }
+
+        public int OnDeviceAdded(string endpointId) => 0;
+        public int OnDeviceRemoved(string endpointId) => 0;
+        public int OnDefaultDeviceChanged(int flow, int role, string? endpointId)
+        {
+            if (flow == (int)AudioDataFlow.Render &&
+                (AudioDeviceRole)role is AudioDeviceRole.Console or AudioDeviceRole.Multimedia or AudioDeviceRole.Communications)
+            {
+                var notifiedAt = DateTimeOffset.UtcNow;
+                ThreadPool.QueueUserWorkItem(_ => defaultChanged(role, endpointId, notifiedAt));
+            }
+            return 0;
+        }
+        public int OnPropertyValueChanged(string endpointId, PropertyKey key) => 0;
+    }
+
+    private sealed class EndpointActivationSubscription(IMultimediaDeviceEnumerator enumerator, nint callbackPointer) : IDisposable
+    {
+        private nint _callbackPointer = callbackPointer;
+
+        public void Dispose()
+        {
+            var callback = Interlocked.Exchange(ref _callbackPointer, 0);
+            if (callback == 0) return;
+            try
+            {
+                enumerator.UnregisterEndpointNotificationCallback(callback);
+            }
+            finally
+            {
+                try { CoreAudioInterop.Release(enumerator); }
+                finally { Marshal.Release(callback); }
+            }
         }
     }
 

@@ -70,7 +70,7 @@ public sealed class AudioEndpointClassifierTests
         Assert.Equal(exact, AudioEndpointSelection.SelectA2dpEndpoint(exactMatches));
 
         var unpluggedMatches = AudioEndpointSelection.MatchSpeakerEndpoints(deviceName, [exact with { IsActive = false }, alias]);
-        Assert.Null(AudioEndpointSelection.SelectA2dpEndpoint(unpluggedMatches));
+        Assert.Equal(alias, AudioEndpointSelection.SelectA2dpEndpoint(unpluggedMatches));
 
         var ambiguousMatches = AudioEndpointSelection.MatchSpeakerEndpoints(deviceName, [alias, alias with { EndpointId = "second" }]);
         Assert.Null(AudioEndpointSelection.SelectA2dpEndpoint(ambiguousMatches));
@@ -78,6 +78,50 @@ public sealed class AudioEndpointClassifierTests
         var handsFree = alias with { Kind = SpeakerAudioEndpointKind.HandsFreeRender };
         var handsFreeMatches = AudioEndpointSelection.MatchSpeakerEndpoints(deviceName, [handsFree]);
         Assert.Null(AudioEndpointSelection.SelectA2dpEndpoint(handsFreeMatches));
+    }
+
+    [Theory]
+    [InlineData("客厅扬声器")]
+    [InlineData("Headset (Xiaomi蓝牙音箱Pro)")]
+    [InlineData("Speakers (Xiaomi Sound Party)")]
+    public void SameContainerSelectsActivePlaybackRegardlessOfDisplayName(string activeName)
+    {
+        const string deviceName = "Xiaomi蓝牙音箱Pro";
+        var containerId = Guid.NewGuid();
+        var stale = PlaybackEndpoint("stale", $"耳机 ({deviceName})") with { IsActive = false, ContainerId = containerId };
+        var active = PlaybackEndpoint("speaker", activeName) with
+        {
+            ContainerId = containerId,
+            Kind = AudioEndpointClassifier.Classify(activeName, AudioEndpointDirection.Render)
+        };
+        var unrelatedDefault = PlaybackEndpoint("other", $"Speakers ({deviceName})") with
+        {
+            ContainerId = Guid.NewGuid(), IsDefault = true
+        };
+
+        var matches = AudioEndpointSelection.MatchSpeakerEndpoints(deviceName, [stale, active, unrelatedDefault], containerId);
+        Assert.Equal(active.EndpointId, AudioEndpointSelection.SelectA2dpEndpoint(matches)?.EndpointId);
+        Assert.DoesNotContain(unrelatedDefault, matches);
+    }
+
+    [Fact]
+    public void KnownOtherContainerAndExplicitHandsFreeAreNeverSelected()
+    {
+        const string deviceName = "Xiaomi Sound Party";
+        var containerId = Guid.NewGuid();
+        var other = PlaybackEndpoint("other", deviceName) with { ContainerId = Guid.NewGuid(), IsDefault = true };
+        var handsFree = PlaybackEndpoint("hands-free", "Headset (Xiaomi Sound Party Hands-Free AG Audio)") with
+        {
+            ContainerId = containerId
+        };
+
+        Assert.Empty(AudioEndpointSelection.MatchSpeakerEndpoints(deviceName, [other], containerId));
+        Assert.Null(AudioEndpointSelection.SelectA2dpEndpoint(
+            AudioEndpointSelection.MatchSpeakerEndpoints(deviceName, [other, handsFree], containerId)));
+
+        var nameOnly = PlaybackEndpoint("name-only", deviceName);
+        Assert.Equal(nameOnly, AudioEndpointSelection.SelectA2dpEndpoint(
+            AudioEndpointSelection.MatchSpeakerEndpoints(deviceName, [other, nameOnly], containerId)));
     }
 
     private static AudioEndpointDescriptor PlaybackEndpoint(string id, string name) =>

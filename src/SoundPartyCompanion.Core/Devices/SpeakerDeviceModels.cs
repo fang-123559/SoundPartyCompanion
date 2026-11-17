@@ -13,7 +13,10 @@ public sealed record SpeakerDevice(
     string DisplayName,
     bool IsPaired,
     bool IsConnected,
-    DateTimeOffset ObservedAt);
+    DateTimeOffset ObservedAt)
+{
+    public Guid? ContainerId { get; init; }
+}
 
 public sealed record SpeakerDiscoverySnapshot(
     bool IsBluetoothAvailable,
@@ -29,6 +32,7 @@ public sealed record SpeakerConnectionSnapshot(
     DateTimeOffset ObservedAt)
 {
     public SpeakerBatterySnapshot Battery { get; init; } = SpeakerBatterySnapshot.Unavailable;
+    public Guid? ContainerId { get; init; }
 
     public bool IsConnected =>
         State is SpeakerConnectionState.Connected or SpeakerConnectionState.ConnectedAsOutput;

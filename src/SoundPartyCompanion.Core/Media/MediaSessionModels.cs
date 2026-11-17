@@ -45,7 +45,9 @@ public static class MediaSessionRules
         ArgumentNullException.ThrowIfNull(candidates);
         var sessions = candidates.ToArray();
 
-        return sessions
+        return sessions.FirstOrDefault(session => session.PlaybackState == MediaPlaybackState.Playing &&
+                string.Equals(session.SessionId, currentSessionId, StringComparison.Ordinal))
+            ?? sessions
             .Where(session => session.PlaybackState == MediaPlaybackState.Playing)
             .OrderByDescending(session => session.ObservedAt)
             .FirstOrDefault()

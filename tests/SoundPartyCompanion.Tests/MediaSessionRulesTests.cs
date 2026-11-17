@@ -6,6 +6,17 @@ namespace SoundPartyCompanion.Tests;
 public sealed class MediaSessionRulesTests
 {
     [Fact]
+    public void SystemCurrentPlayingSessionWinsOverOtherPlayingSessions()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var result = MediaSessionRules.Select([
+            Candidate("old-movie", MediaPlaybackState.Playing, now.AddSeconds(1)),
+            Candidate("current-series", MediaPlaybackState.Playing, now)
+        ], "current-series");
+        Assert.Equal("current-series", result?.SessionId);
+    }
+
+    [Fact]
     public void SelectPrefersMostRecentlyObservedPlayingSession()
     {
         var now = DateTimeOffset.UtcNow;

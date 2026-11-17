@@ -8,6 +8,8 @@ public sealed class WindowsMediaSessionController(IAppLogger? logger = null) : I
 {
     private readonly IAppLogger? _logger = logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SemaphoreSlim _controlGate = new(1, 1);
+    private readonly MediaSessionTargets<GlobalSystemMediaTransportControlsSession> _targets = new();
     private GlobalSystemMediaTransportControlsSessionManager? _manager;
 
     public async ValueTask<SpeakerMediaSnapshot> GetSnapshotAsync(
@@ -35,70 +37,55 @@ public sealed class WindowsMediaSessionController(IAppLogger? logger = null) : I
         }
     }
 
-    public ValueTask<bool> TogglePlayPauseAsync(CancellationToken cancellationToken = default) =>
-        ExecuteAsync(MediaAction.TogglePlayPause, cancellationToken);
+    public ValueTask<bool> TogglePlayPauseAsync(string sessionId, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(sessionId, MediaAction.TogglePlayPause, cancellationToken);
 
-    public ValueTask<bool> SkipPreviousAsync(CancellationToken cancellationToken = default) =>
-        ExecuteAsync(MediaAction.SkipPrevious, cancellationToken);
+    public ValueTask<bool> SkipPreviousAsync(string sessionId, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(sessionId, MediaAction.SkipPrevious, cancellationToken);
 
-    public ValueTask<bool> SkipNextAsync(CancellationToken cancellationToken = default) =>
-        ExecuteAsync(MediaAction.SkipNext, cancellationToken);
+    public ValueTask<bool> SkipNextAsync(string sessionId, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(sessionId, MediaAction.SkipNext, cancellationToken);
 
     private async ValueTask<bool> ExecuteAsync(
+        string sessionId,
         MediaAction action,
         CancellationToken cancellationToken)
     {
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-
+        if (!await _controlGate.WaitAsync(0, cancellationToken).ConfigureAwait(false)) return false;
         try
         {
-            var selected = await GetSelectedSessionAsync(cancellationToken);
-            if (selected is null)
+            // Control exactly the displayed target, without waiting on media metadata or reselecting.
+            var manager = _manager;
+            if (manager is null) return false;
+            var session = _targets.Resolve(sessionId);
+            if (session is null || !manager.GetSessions().Contains(session)) return false;
+            var playback = session.GetPlaybackInfo();
+            var controls = playback.Controls;
+            bool result;
+            switch (action)
             {
-                return false;
+                case MediaAction.TogglePlayPause when playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing && controls.IsPauseEnabled:
+                    result = await session.TryPauseAsync(); break;
+                case MediaAction.TogglePlayPause when playback.PlaybackStatus != GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing && controls.IsPlayEnabled:
+                    result = await session.TryPlayAsync(); break;
+                case MediaAction.TogglePlayPause when controls.IsPlayPauseToggleEnabled:
+                    result = await session.TryTogglePlayPauseAsync(); break;
+                case MediaAction.SkipPrevious when controls.IsPreviousEnabled:
+                    result = await session.TrySkipPreviousAsync(); break;
+                case MediaAction.SkipNext when controls.IsNextEnabled:
+                    result = await session.TrySkipNextAsync(); break;
+                default: return false;
             }
-
-            var controls = selected.Session.GetPlaybackInfo().Controls;
-            var isAllowed = action switch
-            {
-                MediaAction.TogglePlayPause => controls.IsPlayEnabled || controls.IsPauseEnabled,
-                MediaAction.SkipPrevious => controls.IsPreviousEnabled,
-                MediaAction.SkipNext => controls.IsNextEnabled,
-                _ => false
-            };
-
-            if (!isAllowed)
-            {
-                return false;
-            }
-
-            var result = action switch
-            {
-                MediaAction.TogglePlayPause =>
-                    await selected.Session.TryTogglePlayPauseAsync(),
-                MediaAction.SkipPrevious =>
-                    await selected.Session.TrySkipPreviousAsync(),
-                MediaAction.SkipNext =>
-                    await selected.Session.TrySkipNextAsync(),
-                _ => false
-            };
-
             cancellationToken.ThrowIfCancellationRequested();
             return result;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception)
         {
             LogFailure("Media session control", exception);
             return false;
         }
-        finally
-        {
-            _gate.Release();
-        }
+        finally { _controlGate.Release(); }
     }
 
     private async ValueTask<SelectedSession?> GetSelectedSessionAsync(
@@ -108,6 +95,7 @@ public sealed class WindowsMediaSessionController(IAppLogger? logger = null) : I
         cancellationToken.ThrowIfCancellationRequested();
 
         var sessions = _manager.GetSessions();
+        _targets.Update(sessions);
         var observedAt = DateTimeOffset.UtcNow;
         var candidates = new List<MediaSessionCandidate>(sessions.Count);
         var sessionLookup = new List<(string Id, GlobalSystemMediaTransportControlsSession Session)>();
@@ -115,17 +103,17 @@ public sealed class WindowsMediaSessionController(IAppLogger? logger = null) : I
         foreach (var session in sessions)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var sessionId = session.SourceAppUserModelId;
+            var sessionId = _targets.GetId(session)!;
             var playbackInfo = session.GetPlaybackInfo();
             var controls = playbackInfo.Controls;
-            var properties = await session.TryGetMediaPropertiesAsync();
-            cancellationToken.ThrowIfCancellationRequested();
             var candidate = new MediaSessionCandidate(
                 sessionId,
-                EmptyToNull(properties.Title),
-                EmptyToNull(properties.Artist),
+                null,
+                null,
                 MapPlaybackState(playbackInfo.PlaybackStatus),
-                controls.IsPlayEnabled || controls.IsPauseEnabled,
+                controls.IsPlayPauseToggleEnabled ||
+                    (playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing
+                        ? controls.IsPauseEnabled : controls.IsPlayEnabled),
                 controls.IsPreviousEnabled,
                 controls.IsNextEnabled,
                 observedAt);
@@ -133,7 +121,7 @@ public sealed class WindowsMediaSessionController(IAppLogger? logger = null) : I
             sessionLookup.Add((sessionId, session));
         }
 
-        var currentSessionId = _manager.GetCurrentSession()?.SourceAppUserModelId;
+        var currentSessionId = _targets.GetId(_manager.GetCurrentSession());
         var selectedCandidate = MediaSessionRules.Select(candidates, currentSessionId);
         if (selectedCandidate is null)
         {
@@ -144,10 +132,12 @@ public sealed class WindowsMediaSessionController(IAppLogger? logger = null) : I
             item.Id,
             selectedCandidate.SessionId,
             StringComparison.Ordinal)).Session;
+        var properties = await selectedSession.TryGetMediaPropertiesAsync();
+        cancellationToken.ThrowIfCancellationRequested();
         var snapshot = new SpeakerMediaSnapshot(
             selectedCandidate.SessionId,
-            selectedCandidate.TrackTitle,
-            selectedCandidate.TrackArtist,
+            EmptyToNull(properties.Title),
+            EmptyToNull(properties.Artist),
             selectedCandidate.PlaybackState,
             selectedCandidate.CanPlayPause,
             selectedCandidate.CanSkipPrevious,

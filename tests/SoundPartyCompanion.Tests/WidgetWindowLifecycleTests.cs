@@ -467,6 +467,9 @@ public sealed class WidgetWindowLifecycleTests
 
     private sealed class FakeAudioController : IAudioEndpointController
     {
+        public ValueTask<bool> IsCurrentOutputAsync(SpeakerDevice device, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(true);
+
         private static readonly AudioEndpointDescriptor Endpoint = new(
             "test-a2dp", "Xiaomi Sound Party", AudioEndpointDirection.Render,
             SpeakerAudioEndpointKind.A2dpRender, IsActive: true, IsDefault: true);
@@ -492,9 +495,9 @@ public sealed class WidgetWindowLifecycleTests
             PendingSnapshot is { } pending
                 ? new ValueTask<SpeakerMediaSnapshot>(pending.WaitAsync(cancellationToken))
                 : ValueTask.FromResult(Current);
-        public ValueTask<bool> TogglePlayPauseAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(true);
-        public ValueTask<bool> SkipPreviousAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(true);
-        public ValueTask<bool> SkipNextAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(true);
+        public ValueTask<bool> TogglePlayPauseAsync(string sessionId, CancellationToken cancellationToken = default) => ValueTask.FromResult(true);
+        public ValueTask<bool> SkipPreviousAsync(string sessionId, CancellationToken cancellationToken = default) => ValueTask.FromResult(true);
+        public ValueTask<bool> SkipNextAsync(string sessionId, CancellationToken cancellationToken = default) => ValueTask.FromResult(true);
     }
 
     private sealed class MemorySettingsStore : IAppSettingsStore

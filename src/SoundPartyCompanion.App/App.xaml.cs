@@ -22,6 +22,7 @@ public partial class App : System.Windows.Application
     private const string SingleInstanceId = "SoundPartyCompanion.App.v1";
     private SingleInstanceCoordinator? _singleInstance;
     private IAppLogger? _logger;
+    private Task<IDisposable?>? _endpointActivationWatch;
     private IConnectionMonitor? _connectionMonitor;
     private ConnectionStatusViewModel? _connectionViewModel;
     private MainWindow? _widgetWindow;
@@ -57,6 +58,8 @@ public partial class App : System.Windows.Application
         var discovery = new WindowsBluetoothDiscovery(_logger);
         var batteryReader = new WindowsSpeakerBatteryReader();
         var audioController = new WindowsAudioEndpointController(_logger);
+        _endpointActivationWatch = Task.Run(() =>
+            audioController.WatchSpeakerEndpointActivations(() => _connectionMonitor?.Current.ContainerId));
         var mediaController = new WindowsMediaSessionController(_logger);
         var outputProbe = new WindowsDefaultOutputProbe(audioController, _logger);
         var selectionStore = new LocalSpeakerSelectionStore(_logger);
@@ -82,7 +85,8 @@ public partial class App : System.Windows.Application
             mediaController,
             settingsStore,
             startupManager,
-            initialSettings);
+            initialSettings,
+            _logger);
         _connectionViewModel.SettingsRequested += HandleSettingsRequested;
         _connectionViewModel.PresentationSettingsChanged += HandlePresentationSettingsChanged;
         _connectionViewModel.BluetoothSettingsRequested += HandleBluetoothSettingsRequested;
@@ -142,6 +146,7 @@ public partial class App : System.Windows.Application
         {
             _connectionMonitor.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
+        _endpointActivationWatch?.GetAwaiter().GetResult()?.Dispose();
         _logger?.Write(AppLogLevel.Information, $"Application exiting with code {e.ApplicationExitCode}.");
         base.OnExit(e);
     }

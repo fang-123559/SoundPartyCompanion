@@ -31,10 +31,9 @@ public sealed class WindowsDefaultOutputProbe : IOutputDeviceProbe
 
         try
         {
-            var snapshot = await _audioController
-                .GetSnapshotAsync(device, cancellationToken)
+            return await _audioController
+                .IsCurrentOutputAsync(device, cancellationToken)
                 .ConfigureAwait(false);
-            return snapshot.IsCurrentOutput;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

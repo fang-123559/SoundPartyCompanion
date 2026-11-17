@@ -13,6 +13,12 @@ namespace SoundPartyCompanion.Windows.Bluetooth;
 
 public sealed class WindowsBluetoothDiscovery(IAppLogger? logger = null) : ISpeakerDiscovery
 {
+    private const uint DevicePropertyTypeGuid = 0x0000000D;
+    private static readonly DevicePropertyKey ContainerIdKey = new()
+    {
+        FormatId = new Guid("8C7ED206-3F8A-4827-B3AB-AE9E1FAEFC6C"),
+        PropertyId = 2
+    };
     private readonly IAppLogger? _logger = logger;
 
     public ValueTask<SpeakerDiscoverySnapshot> DiscoverAsync(
@@ -306,7 +312,8 @@ public sealed class WindowsBluetoothDiscovery(IAppLogger? logger = null) : ISpea
                     continue;
                 }
 
-                var address = TryReadAddressFromInstanceId(instanceId.ToString());
+                var instance = instanceId.ToString();
+                var address = TryReadAddressFromInstanceId(instance);
                 if (address is null)
                 {
                     continue;
@@ -327,12 +334,17 @@ public sealed class WindowsBluetoothDiscovery(IAppLogger? logger = null) : ISpea
 
                 var key = CreateDeviceKey(address.Value);
                 var name = FirstNonEmpty(nativeDevice.Name, "Bluetooth audio device");
+                var containerId = devices.GetValueOrDefault(key)?.ContainerId;
+                if (containerId is null || instance.StartsWith(@"BTHENUM\DEV_", StringComparison.OrdinalIgnoreCase))
+                {
+                    containerId = ReadContainerId(deviceInfoSet, ref deviceInfo) ?? containerId;
+                }
                 devices[key] = new SpeakerDevice(
                     key,
                     name,
                     IsPaired: true,
                     nativeDevice.Connected,
-                    observedAt);
+                    observedAt) { ContainerId = containerId };
             }
         }
         finally
@@ -341,6 +353,21 @@ public sealed class WindowsBluetoothDiscovery(IAppLogger? logger = null) : ISpea
         }
 
         return devices.Values.ToArray();
+    }
+
+    private static Guid? ReadContainerId(nint deviceInfoSet, ref SetupDeviceInfoData deviceInfo)
+    {
+        var buffer = new byte[16];
+        var key = ContainerIdKey;
+        if (!NativeBluetooth.SetupDiGetDeviceProperty(deviceInfoSet, ref deviceInfo, ref key,
+                out var type, buffer, (uint)buffer.Length, out var size, 0) ||
+            type != DevicePropertyTypeGuid || size != buffer.Length)
+        {
+            return null;
+        }
+
+        var containerId = new Guid(buffer);
+        return containerId == Guid.Empty ? null : containerId;
     }
 
     private static IReadOnlyList<SpeakerDevice> MergeDevices(

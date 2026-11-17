@@ -37,13 +37,14 @@ internal enum ClassContext : uint
 }
 
 [StructLayout(LayoutKind.Sequential)]
-internal struct PropertyKey(Guid formatId, uint propertyId)
+public struct PropertyKey(Guid formatId, uint propertyId)
 {
     public Guid FormatId = formatId;
     public uint PropertyId = propertyId;
 }
 
-[StructLayout(LayoutKind.Explicit)]
+// On x64 the native union contains counted pointers and occupies 16 bytes at offset 8.
+[StructLayout(LayoutKind.Explicit, Size = 24)]
 internal struct PropVariant
 {
     [FieldOffset(0)]
@@ -96,6 +97,36 @@ internal interface IMultimediaDeviceCollection
 
     [PreserveSig]
     int Item(uint index, out IMultimediaDevice device);
+}
+
+[ComVisible(true)]
+[Guid("7991EEC9-7E89-4D85-8390-6C703CEC60C0")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface IMMNotificationClient
+{
+    [PreserveSig]
+    int OnDeviceStateChanged([MarshalAs(UnmanagedType.LPWStr)] string endpointId, uint state);
+
+    [PreserveSig]
+    int OnDeviceAdded([MarshalAs(UnmanagedType.LPWStr)] string endpointId);
+
+    [PreserveSig]
+    int OnDeviceRemoved([MarshalAs(UnmanagedType.LPWStr)] string endpointId);
+
+    [PreserveSig]
+    int OnDefaultDeviceChanged(int flow, int role, [MarshalAs(UnmanagedType.LPWStr)] string? endpointId);
+
+    [PreserveSig]
+    int OnPropertyValueChanged([MarshalAs(UnmanagedType.LPWStr)] string endpointId, PropertyKey key);
+}
+
+[ComImport]
+[Guid("1BE09788-6894-4089-8586-9A2A6C265AC5")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+internal interface IMMEndpoint
+{
+    [PreserveSig]
+    int GetDataFlow(out AudioDataFlow flow);
 }
 
 [ComImport]
@@ -287,10 +318,14 @@ internal interface IPolicyConfig
 internal static class CoreAudioInterop
 {
     private const ushort VariantString = 31;
+    private const ushort VariantGuid = 72;
     private const uint ReadOnlyStorage = 0;
     private static readonly PropertyKey FriendlyNameKey = new(
         new Guid("A45C254E-DF1C-4EFD-8020-67D146A850E0"),
         14);
+    private static readonly PropertyKey ContainerIdKey = new(
+        new Guid("8C7ED206-3F8A-4827-B3AB-AE9E1FAEFC6C"),
+        2);
 
     public static IMultimediaDeviceEnumerator CreateEnumerator() =>
         (IMultimediaDeviceEnumerator)Activator.CreateInstance(
@@ -302,20 +337,38 @@ internal static class CoreAudioInterop
         return endpointId;
     }
 
-    public static string? GetFriendlyName(IMultimediaDevice device)
+    public static (string? FriendlyName, Guid? ContainerId) GetEndpointIdentity(
+        IMultimediaDevice device, bool readContainerId, Guid? requiredContainerId = null)
     {
         IAudioPropertyStore? store = null;
-        var value = default(PropVariant);
-
         try
         {
             Marshal.ThrowExceptionForHR(device.OpenPropertyStore(ReadOnlyStorage, out store));
-            var key = FriendlyNameKey;
-            Marshal.ThrowExceptionForHR(store.GetValue(ref key, out value));
+            var containerId = readContainerId ? ReadProperty<Guid?>(store, ContainerIdKey, ParseContainerId) : null;
+            if (requiredContainerId.GetValueOrDefault() != Guid.Empty && containerId.HasValue &&
+                containerId != requiredContainerId)
+            {
+                return (null, containerId);
+            }
+            return (ReadProperty(store, FriendlyNameKey, static value => value.VariantType == VariantString
+                        ? Marshal.PtrToStringUni(value.PointerValue)
+                        : null),
+                containerId);
+        }
+        finally
+        {
+            Release(store);
+        }
+    }
 
-            return value.VariantType == VariantString && value.PointerValue != nint.Zero
-                ? Marshal.PtrToStringUni(value.PointerValue)
-                : null;
+    private static T? ReadProperty<T>(IAudioPropertyStore store, PropertyKey key, Func<PropVariant, T?> parse)
+    {
+        var value = default(PropVariant);
+        try
+        {
+            return store.GetValue(ref key, out value) >= 0 && value.PointerValue != nint.Zero
+                ? parse(value)
+                : default;
         }
         finally
         {
@@ -323,9 +376,18 @@ internal static class CoreAudioInterop
             {
                 PropVariantClear(ref value);
             }
-
-            Release(store);
         }
+    }
+
+    private static Guid? ParseContainerId(PropVariant value)
+    {
+        var containerId = value.VariantType switch
+        {
+            VariantGuid => Marshal.PtrToStructure<Guid>(value.PointerValue),
+            VariantString when Guid.TryParse(Marshal.PtrToStringUni(value.PointerValue), out var parsed) => parsed,
+            _ => Guid.Empty
+        };
+        return containerId == Guid.Empty ? null : containerId;
     }
 
     public static IAudioEndpointVolume ActivateEndpointVolume(IMultimediaDevice device)
@@ -343,7 +405,8 @@ internal static class CoreAudioInterop
     {
         if (comObject is not null && Marshal.IsComObject(comObject))
         {
-            Marshal.FinalReleaseComObject(comObject);
+            // Separate Core Audio calls can return the same managed wrapper.
+            Marshal.ReleaseComObject(comObject);
         }
     }
 

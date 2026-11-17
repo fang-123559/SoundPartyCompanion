@@ -628,7 +628,7 @@
                            Foreground="{StaticResource TextPrimaryBrush}"
                            FontSize="23"
                            FontWeight="Normal"
-                           Text="{Binding VolumePercent, StringFormat={}{0:0}%}" />
+                           Text="{Binding VolumeDisplayText}" />
                 <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
                     <TextBlock Foreground="{StaticResource TextSecondaryBrush}"
                                FontSize="11"
@@ -730,7 +730,7 @@
                                    Foreground="{StaticResource TextPrimaryBrush}"
                                    FontSize="28"
                                    FontWeight="Normal"
-                                   Text="{Binding VolumePercent, StringFormat={}{0:0}%}" />
+                                   Text="{Binding VolumeDisplayText}" />
                         <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
                             <TextBlock Foreground="#D89B7D"
                                        FontSize="11"
@@ -802,9 +802,9 @@
                                     <TextBlock Margin="0,3,0,0"
                                                Foreground="{StaticResource TextSecondaryBrush}"
                                                FontSize="11"
-                                               Text="{Binding TrackArtist}"
+                                               Text="{Binding MediaDetailText}"
                                                TextTrimming="CharacterEllipsis"
-                                               ToolTip="{Binding TrackArtist}" />
+                                               ToolTip="{Binding MediaDetailText}" />
                                 </StackPanel>
                             </Grid>
 
@@ -815,7 +815,8 @@
                                         Style="{StaticResource MediaButtonStyle}"
                                         Command="{Binding PreviousCommand}"
                                         Content="⏮"
-                                        ToolTip="上一首"
+                                        ToolTipService.ShowOnDisabled="True"
+                                        ToolTip="上一项（由播放器支持；网页分集请在页面中选择）"
                                         AutomationProperties.Name="上一首" />
                                 <Button Style="{StaticResource PrimaryMediaButtonStyle}"
                                         Command="{Binding PlayPauseCommand}"
@@ -826,7 +827,8 @@
                                         Style="{StaticResource MediaButtonStyle}"
                                         Command="{Binding NextCommand}"
                                         Content="⏭"
-                                        ToolTip="下一首"
+                                        ToolTipService.ShowOnDisabled="True"
+                                        ToolTip="下一项（由播放器支持；网页分集请在页面中选择）"
                                         AutomationProperties.Name="下一首" />
                             </StackPanel>
                         </StackPanel>
@@ -848,6 +850,7 @@
                                 ToolTip="{Binding MuteCommandText}"
                                 AutomationProperties.Name="{Binding MuteCommandText}" />
                         <Slider x:Name="VolumeSlider"
+                                IsEnabled="{Binding IsVolumeAvailable}"
                                 Grid.Column="2"
                                 Minimum="0"
                                 Maximum="100"
@@ -861,7 +864,7 @@
                                    HorizontalAlignment="Right"
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    FontSize="11"
-                                   Text="{Binding VolumePercent, StringFormat={}{0:0}}" />
+                                   Text="{Binding VolumeValueText}" />
                     </Grid>
 
                     <Border Grid.Row="4"
