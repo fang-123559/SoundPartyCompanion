@@ -31,7 +31,7 @@ jobs:
           name: SoundPartyCompanion-win-x64
           if-no-files-found: error
           path: |
-            artifacts/installer/SoundPartyCompanion-Setup-0.1.1-win-x64.exe
-            artifacts/installer/SoundPartyCompanion-Setup-0.1.1-win-x64.exe.sha256
-            artifacts/installer/packaging-report-0.1.1.json
+            artifacts/installer/SoundPartyCompanion-Setup-0.1.2-win-x64.exe
+            artifacts/installer/SoundPartyCompanion-Setup-0.1.2-win-x64.exe.sha256
+            artifacts/installer/packaging-report-0.1.2.json
             artifacts/test-results/*.trx

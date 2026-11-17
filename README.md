@@ -2,7 +2,7 @@
 
 非官方、仅本地运行的 Windows 11 x64 桌面音箱伴侣。适用设备：`Xiaomi蓝牙音箱Pro`；设计参考 `MDZ-39-DB / Xiaomi Sound Party`。
 
-`0.1.1` 使用 .NET 10 LTS，提供连接状态、音频控制、媒体与电量显示，以及原位切换的设置面板。源码见 [GitHub 仓库](https://github.com/fang-123559/SoundPartyCompanion)，正式安装包见 [v0.1.1 Release](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.1)。详见 [发布说明](./docs/release-0.1.1.md)。
+`0.1.2` 使用 .NET 10 LTS，修复音箱重连时的输出识别和音量显示，并让媒体按钮只控制卡片上显示的播放器会话。源码见 [GitHub 仓库](https://github.com/fang-123559/SoundPartyCompanion)，正式安装包见 [v0.1.2 Release](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.2)。详见 [发布说明](./docs/release-0.1.2.md)。
 
 ## 安装与首次使用
 
@@ -13,10 +13,10 @@
 
 豆包对话和豆包工作是已实测的示例，可查看[导入说明及实测反馈](https://github.com/fang-123559/Sound-Party-Companion-AI-Agent-download#豆包工作)。
 
-若 GitHub 下载不便，可使用 [夸克网盘备用下载（v0.1.1，Windows x64）](https://pan.quark.cn/s/70506127e681)。下载后请用下方同版本的 SHA256 校验文件核对安装包。
+夸克网盘仍提供 [旧版 v0.1.1 安装包](https://pan.quark.cn/s/70506127e681)，请使用 [v0.1.1 的 SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe.sha256) 核对。最新版请从 GitHub 下载。
 
 1. 在 Windows“设置 → 蓝牙和设备”配对音箱，并保持蓝牙开启。
-2. 下载 [Windows x64 安装包](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe) 和 [SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe.sha256)，核对文件来源和 SHA256。[打包报告](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/packaging-report-0.1.1.json) 记录源码提交及构建环境。
+2. 下载 [Windows x64 安装包](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.2/SoundPartyCompanion-Setup-0.1.2-win-x64.exe) 和 [SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.2/SoundPartyCompanion-Setup-0.1.2-win-x64.exe.sha256)，核对文件来源和 SHA256。[打包报告](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.2/packaging-report-0.1.2.json) 记录源码提交及构建环境。
 3. 运行安装包。默认安装到当前用户的 `%LocalAppData%\Programs\SoundPartyCompanion`，无需管理员权限，也无需另装 .NET。
 4. 从开始菜单打开 Sound Party Companion。组件区分“已配对但离线”“已连接”和“当前输出”；点击卡片展开音量、静音和可用媒体控制。
 5. 托盘菜单可显示/隐藏、打开设置、导出诊断和退出。首次使用默认启用登录启动，可在设置关闭；`Alt+F4` 隐藏到托盘。
@@ -64,7 +64,7 @@
 
 ## 文档与许可
 
-- [更新日志](./CHANGELOG.md) · [0.1.1 发布说明](./docs/release-0.1.1.md)
+- [更新日志](./CHANGELOG.md) · [0.1.2 发布说明](./docs/release-0.1.2.md)
 - [产品说明](./PRD.md) · [功能说明](./SPEC.md)
 - [界面与交互](./DESIGN.md) · [版本与功能范围](./PLAN.md)
 - [MIT LICENSE](./LICENSE) · [第三方声明](./THIRD-PARTY-NOTICES.md)

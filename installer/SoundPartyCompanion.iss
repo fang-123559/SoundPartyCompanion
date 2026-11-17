@@ -1,6 +1,6 @@
 #define MyAppName "Sound Party Companion"
 #ifndef MyAppVersion
-  #define MyAppVersion "0.1.1"
+  #define MyAppVersion "0.1.2"
 #endif
 #define MyAppPublisher "Sound Party Companion contributors"
 #define MyAppExeName "SoundPartyCompanion.App.exe"

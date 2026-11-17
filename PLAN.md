@@ -2,9 +2,9 @@
 
 ## 当前版本
 
-[v0.1.1](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.1) 面向 Windows 11 x64 与 `Xiaomi蓝牙音箱Pro`，提供当前用户安装包、SHA256 校验文件和打包报告。
+[v0.1.2](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.2) 面向 Windows 11 x64 与 `Xiaomi蓝牙音箱Pro`，提供当前用户安装包、SHA256 校验文件和打包报告。
 
-本版使用 .NET 10 LTS，设置改为原位切换，并修复卸载时选择删除数据却保留已知数据的问题。完整变更见 [更新日志](./CHANGELOG.md)。
+本版改进蓝牙重连和音量同步，并修复媒体按钮可能控制其他浏览器标签页的问题。完整变更见 [更新日志](./CHANGELOG.md)。
 
 ## 提供的功能
 
