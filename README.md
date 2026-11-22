@@ -6,6 +6,12 @@
 
 `v0.1.1` 使用 .NET 10 LTS，安装包自带运行库。功能包括蓝牙连接状态、音量与静音、播放器支持的媒体控制、Windows 系统电量和原位设置面板。安装包未签名，Windows 可能显示 SmartScreen 提示。
 
+## Windows 内测版 0.1.2.2
+
+[下载内测 ZIP](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.2.2-beta/SoundPartyCompanion-0.1.2.2-win-x64-beta.zip) · [查看预发布说明](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.2.2-beta)
+
+这版用于排查小米音箱重连后，Windows 已显示连接、组件音量却长时间显示 `--` 的问题。从托盘退出旧版，完整解压 ZIP，双击 `SoundPartyCompanion.App.exe`。如果再遇到延迟，请记下发生时间，从托盘选择“导出诊断”，把诊断包和时间一起反馈。
+
 ## 安装与首次使用
 
 如果不熟悉 GitHub，可以请 AI 助手帮你下载 Windows 安装包并指导安装。
