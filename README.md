@@ -2,29 +2,25 @@
 
 非官方、仅本地运行的 Windows 11 x64 桌面音箱伴侣。适用设备：`Xiaomi蓝牙音箱Pro`；设计参考 `MDZ-39-DB / Xiaomi Sound Party`。
 
-**推荐下载 v0.1.1** · [Windows x64 安装包](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe) · [SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe.sha256) · [发布说明](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.1)
+**推荐下载 v0.1.3** · [Windows x64 安装包](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.3/SoundPartyCompanion-Setup-0.1.3-win-x64.exe) · [SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.3/SoundPartyCompanion-Setup-0.1.3-win-x64.exe.sha256) · [发布说明](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.3)
 
-`v0.1.1` 使用 .NET 10 LTS，安装包自带运行库。功能包括蓝牙连接状态、音量与静音、播放器支持的媒体控制、Windows 系统电量和原位设置面板。安装包未签名，Windows 可能显示 SmartScreen 提示。
+`v0.1.3` 使用 .NET 10 LTS，安装包自带运行库。功能包括蓝牙连接状态、音量与静音、播放器支持的媒体控制、Windows 系统电量和原位设置面板。安装包未签名，Windows 可能显示 SmartScreen 提示。
 
-## Windows 内测版 0.1.2.2
-
-[下载内测 ZIP](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.2.2-beta/SoundPartyCompanion-0.1.2.2-win-x64-beta.zip) · [查看预发布说明](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.2.2-beta)
-
-这版用于排查小米音箱重连后，Windows 已显示连接、组件音量却长时间显示 `--` 的问题。从托盘退出旧版，完整解压 ZIP，双击 `SoundPartyCompanion.App.exe`。如果再遇到延迟，请记下发生时间，从托盘选择“导出诊断”，把诊断包和时间一起反馈。
+本版基于已通过实机验收的 Windows 内测版 0.1.2.2，增加音箱重连诊断。若音量长时间显示 `--`，请记下发生时间，从托盘导出诊断包。
 
 ## 安装与首次使用
 
 如果不熟悉 GitHub，可以请 AI 助手帮你下载 Windows 安装包并指导安装。
 
-- **AI 对话**：复制[下载提示词](https://github.com/fang-123559/Sound-Party-Companion-AI-Agent-download/blob/main/download-with-ai.txt)并发送给豆包或其他 AI 聊天助手，请它提供 `v0.1.1` 的下载直链和操作步骤。
-- **Agent Skill**：[下载 Skill ZIP](https://github.com/fang-123559/Sound-Party-Companion-AI-Agent-download/releases/latest/download/download-sound-party-companion.zip)并导入支持 Skill 的 Agent。指定 `v0.1.1`，有本机权限的 Agent 可以代下载并核对 SHA256。
+- **AI 对话**：复制[下载提示词](https://github.com/fang-123559/Sound-Party-Companion-AI-Agent-download/blob/main/download-with-ai.txt)并发送给豆包或其他 AI 聊天助手，请它提供 `v0.1.3` 的下载直链和操作步骤。
+- **Agent Skill**：[下载 Skill ZIP](https://github.com/fang-123559/Sound-Party-Companion-AI-Agent-download/releases/latest/download/download-sound-party-companion.zip)并导入支持 Skill 的 Agent。指定 `v0.1.3`，有本机权限的 Agent 可以代下载并核对 SHA256。
 
 豆包对话和豆包工作是已实测的示例，可查看[导入说明及实测反馈](https://github.com/fang-123559/Sound-Party-Companion-AI-Agent-download#豆包工作)。
 
 也可从[夸克网盘下载 v0.1.1 安装包](https://pan.quark.cn/s/70506127e681)。请使用 GitHub 发布页的[同版 SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe.sha256)核对。
 
 1. 在 Windows“设置 → 蓝牙和设备”配对音箱，并保持蓝牙开启。
-2. 从上方 GitHub 入口下载 `v0.1.1` 安装包和同版 SHA256 文件，核对文件来源和校验值。[打包报告](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/packaging-report-0.1.1.json)记录源码提交及构建环境。
+2. 从上方 GitHub 入口下载 `v0.1.3` 安装包和同版 SHA256 文件，核对文件来源和校验值。[打包报告](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.3/packaging-report-0.1.3.json)记录源码提交及构建环境。
 3. 运行安装包。默认安装到当前用户的 `%LocalAppData%\Programs\SoundPartyCompanion`，无需管理员权限，也无需另装 .NET。
 4. 从开始菜单打开 Sound Party Companion。组件区分“已配对但离线”“已连接”和“当前输出”；点击卡片展开音量、静音和可用媒体控制。
 5. 托盘菜单可显示/隐藏、打开设置、导出诊断和退出。首次使用默认启用登录启动，可在设置关闭；`Alt+F4` 隐藏到托盘。
@@ -49,7 +45,7 @@
 - 不提供充电识别，不根据电量上升或 USB 插拔推断充电。USB-C 只作为供电路径，蓝牙断开仍显示离线。
 - Bass、灯效与 HFP 切换入口保持隐藏；不支持 TWS、Party Connect、多音箱、其他型号兼容承诺、OTA、自动更新或代码签名。
 
-### v0.1.1 的 Windows 数据来源
+### v0.1.3 的 Windows 数据来源
 
 ```mermaid
 flowchart LR
@@ -82,8 +78,8 @@ flowchart LR
 
 ## 文档与许可
 
-- [更新日志](./CHANGELOG.md) · [v0.1.1 发布说明](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.1)
-- [产品说明](./PRD.md) · [v0.1.1 技术规格](https://github.com/fang-123559/SoundPartyCompanion/blob/v0.1.1/SPEC.md)
+- [更新日志](./CHANGELOG.md) · [v0.1.3 发布说明](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.3)
+- [产品说明](./PRD.md) · [v0.1.3 技术规格](https://github.com/fang-123559/SoundPartyCompanion/blob/v0.1.3/SPEC.md)
 - [界面与交互](./DESIGN.md) · [版本与功能范围](./PLAN.md)
 - [MIT LICENSE](./LICENSE) · [第三方声明](./THIRD-PARTY-NOTICES.md)
 

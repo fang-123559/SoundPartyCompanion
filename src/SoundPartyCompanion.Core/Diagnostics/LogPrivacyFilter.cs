@@ -19,6 +19,12 @@ public static class LogPrivacyFilter
         @"\A(?:Application starting\.|Application exiting with code -?\d{1,10}\.|(?:Unhandled UI|Unhandled application-domain|Unobserved task) exception\.(?: ExceptionType=[A-Za-z0-9_]{1,128}; HResult=0x[0-9A-F]{8})?|(?:Connection refresh|Battery refresh|Bluetooth discovery|Audio endpoint snapshot|Audio endpoint control|Default audio output probe|Media session snapshot|Media session control|Diagnostic export) failed \([A-Za-z0-9_]{1,128}\)\.|Classic Bluetooth radio enumeration was skipped \([A-Za-z0-9_]{1,128}\)\.|Startup state could not be (?:read|changed) \([A-Za-z0-9_]{1,128}\)\.|Local (?:settings|speaker selection) could not be (?:loaded|saved) \([A-Za-z0-9_]{1,128}\)\.|Default audio output switch needs user action \([A-Za-z0-9_]{1,128}\)\.|Diagnostic export completed\.)\z",
         RegexOptions.CultureInvariant | RegexOptions.Compiled, MatchTimeout);
     private const string UtcTimestamp = @"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{7}Z";
+    private static readonly Regex ConnectionProbeEvent = new(
+        @"\A(?:Speaker discovery observed\. Connected=[01] DurationMs=[0-9]{1,10}|Speaker connection probes completed\. BatteryMs=[0-9]{1,10} DefaultOutputMs=[0-9]{1,10}|Audio endpoint inventory item unavailable\.)\z",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled, MatchTimeout);
+    private static readonly Regex EndpointDiagnosticEvent = new(
+        $@"\A(?:Audio endpoint inventory failed\.|Audio endpoint decision\. Session=[a-f0-9]{{8}} Endpoint=[0-9]{{1,6}} State=[0-9]{{1,10}} ExpectedContainer=[0-9]{{1,6}} ActualContainer=[0-9]{{1,6}} Reason=(?:Inactive|ContainerMismatch|NameMissing|NameMismatch|ReadFailed|Selected|SelectionExcluded|HandsFree|NotSelected) Default=[01]|Audio endpoint scan\. Session=[a-f0-9]{{8}} ActiveCount=[0-9]{{1,6}} Candidates=[0-9]{{1,6}} Matches=[0-9]{{1,6}} Selected=[01]|Audio endpoint event\. Session=[a-f0-9]{{8}} Endpoint=[0-9]{{1,6}} Kind=(?:InitialRender|State|Added|Removed|ContainerChanged|NameChanged|DefaultConsole|DefaultMultimedia|DefaultCommunications) State=[0-9]{{1,10}} EventUtc={UtcTimestamp})\z",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled, MatchTimeout);
     private static readonly Regex AudioProbeEvent = new(
         $@"\AAudio probe completed\. Operation=(?:Snapshot|DefaultOutput) StartedUtc={UtcTimestamp} DurationMs=[0-9]{{1,10}} EndpointMs=[0-9]{{1,10}} ControlsMs=[0-9]{{1,10}} IdentityReads=[0-9]{{1,6}} Outcome=(?:Offline|NoDefault|Speaker|Other|NoEndpoint|Ready|ReadFailed|Failed|Canceled)\z",
         RegexOptions.CultureInvariant | RegexOptions.Compiled, MatchTimeout);
@@ -61,7 +67,7 @@ public static class LogPrivacyFilter
                     CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp)) continue;
 
                 var message = RedactText(entry.Groups["message"].Value);
-                var safeMessage = SafeEvent.IsMatch(message) || SpeakerTimingEvent.IsMatch(message) || AudioProbeEvent.IsMatch(message)
+                var safeMessage = SafeEvent.IsMatch(message) || SpeakerTimingEvent.IsMatch(message) || AudioProbeEvent.IsMatch(message) || EndpointDiagnosticEvent.IsMatch(message) || ConnectionProbeEvent.IsMatch(message)
                     ? message
                     : "[omitted: non-allowlisted event]";
                 result.Append(timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))

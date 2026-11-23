@@ -74,6 +74,12 @@ public sealed class DiagnosticExportTests
 
     [Theory]
     [InlineData("Speaker endpoint activation watch started.")]
+    [InlineData("Speaker discovery observed. Connected=1 DurationMs=27")]
+    [InlineData("Speaker connection probes completed. BatteryMs=20000 DefaultOutputMs=2")]
+    [InlineData("Audio endpoint inventory item unavailable.")]
+    [InlineData("Audio endpoint decision. Session=a123abcd Endpoint=1 State=1 ExpectedContainer=1 ActualContainer=2 Reason=ContainerMismatch Default=0")]
+    [InlineData("Audio endpoint scan. Session=a123abcd ActiveCount=3 Candidates=0 Matches=0 Selected=0")]
+    [InlineData("Audio endpoint event. Session=a123abcd Endpoint=1 Kind=ContainerChanged State=0 EventUtc=2026-10-03T04:00:18.0000000Z")]
     [InlineData("Speaker endpoint activation watch failed.")]
     [InlineData("Audio endpoint activation lookup failed.")]
     [InlineData("Speaker playback endpoint became active. EventUtc=2026-10-03T04:00:00.0000000Z")]
@@ -98,6 +104,17 @@ public sealed class DiagnosticExportTests
     {
         Assert.Empty(LogPrivacyFilter.FilterForExport("not a log entry\n" + new string('x', 9000)));
         Assert.Empty(LogPrivacyFilter.FilterForExport("9999-99-99T12:00:00Z [Error] Application starting."));
+    }
+
+    [Theory]
+    [InlineData("Audio endpoint decision. Session=a123abcd Endpoint=private-device State=1 ExpectedContainer=1 ActualContainer=2 Reason=ContainerMismatch Default=0")]
+    [InlineData("Audio endpoint decision. Session=a123abcd Endpoint=1 State=1 ExpectedContainer=1 ActualContainer=2 Reason=private-name Default=0")]
+    [InlineData("Audio endpoint event. Session=a123abcd Endpoint=1 Kind=private-name State=0 EventUtc=2026-10-03T04:00:18.0000000Z")]
+    public void EndpointDiagnosticsRejectFreeText(string message)
+    {
+        var exported = LogPrivacyFilter.FilterForExport($"{Stamp} [Information] {message}");
+        Assert.Contains("[omitted: non-allowlisted event]", exported);
+        Assert.DoesNotContain("private", exported);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using SoundPartyCompanion.Core.Diagnostics;
 
 namespace SoundPartyCompanion.Core.Devices;
@@ -21,6 +22,7 @@ public sealed class SpeakerConnectionMonitor : IConnectionMonitor
     private SpeakerBatteryReading? _lastBatteryReading;
     private DateTimeOffset? _lastBatteryAttemptAt;
     private bool _batteryRefreshRequired = true;
+    private bool? _lastObservedConnected;
     private bool _disposed;
 
     public SpeakerConnectionMonitor(
@@ -110,8 +112,9 @@ public sealed class SpeakerConnectionMonitor : IConnectionMonitor
 
         try
         {
+            var started = Stopwatch.GetTimestamp();
             var discovery = await _discovery.DiscoverAsync(cancellationToken).ConfigureAwait(false);
-            var next = await CreateSnapshotAsync(discovery, cancellationToken).ConfigureAwait(false);
+            var next = await CreateSnapshotAsync(discovery, Stopwatch.GetElapsedTime(started), cancellationToken).ConfigureAwait(false);
             Publish(next);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -185,8 +188,17 @@ public sealed class SpeakerConnectionMonitor : IConnectionMonitor
 
     private async ValueTask<SpeakerConnectionSnapshot> CreateSnapshotAsync(
         SpeakerDiscoverySnapshot discovery,
+        TimeSpan discoveryDuration,
         CancellationToken cancellationToken)
     {
+        var device = _selection is null ? null : discovery.Devices.FirstOrDefault(candidate =>
+            string.Equals(candidate.DeviceKey, _selection.DeviceKey, StringComparison.Ordinal));
+        var connected = discovery.IsBluetoothAvailable && device is { IsPaired: true, IsConnected: true };
+        var changed = _lastObservedConnected != connected;
+        _lastObservedConnected = connected;
+        if (changed)
+            _logger?.Write(AppLogLevel.Information, FormattableString.Invariant(
+                $"Speaker discovery observed. Connected={(connected ? 1 : 0)} DurationMs={(long)discoveryDuration.TotalMilliseconds}"));
         if (!discovery.IsBluetoothAvailable)
         {
             _batteryRefreshRequired = true;
@@ -207,12 +219,6 @@ public sealed class SpeakerConnectionMonitor : IConnectionMonitor
                 discovery.ObservedAt), isConnected: false);
         }
 
-        var device = discovery.Devices.FirstOrDefault(candidate =>
-            string.Equals(
-                candidate.DeviceKey,
-                _selection.DeviceKey,
-                StringComparison.Ordinal));
-
         if (device is null || !device.IsPaired || !device.IsConnected)
         {
             _batteryRefreshRequired = true;
@@ -223,12 +229,19 @@ public sealed class SpeakerConnectionMonitor : IConnectionMonitor
                 discovery.ObservedAt) { ContainerId = device?.ContainerId }, isConnected: false);
         }
 
+        var started = Stopwatch.GetTimestamp();
         await RefreshBatteryIfNeededAsync(device, cancellationToken).ConfigureAwait(false);
+        var batteryMs = (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         _batteryRefreshRequired = false;
 
+        started = Stopwatch.GetTimestamp();
         var isCurrentOutput = await _outputProbe
             .IsCurrentOutputAsync(device, cancellationToken)
             .ConfigureAwait(false);
+        var outputMs = (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        if (changed || batteryMs >= 500 || outputMs >= 500)
+            _logger?.Write(AppLogLevel.Information, FormattableString.Invariant(
+                $"Speaker connection probes completed. BatteryMs={batteryMs} DefaultOutputMs={outputMs}"));
 
         return WithBattery(new SpeakerConnectionSnapshot(
             isCurrentOutput

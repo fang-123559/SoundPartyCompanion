@@ -27,7 +27,7 @@ public sealed class WindowsAudioProbeTests
         Assert.Equal(0, enumerator.EnumerationCount);
         Assert.Equal(0, endpoint.Activations);
         Assert.Equal(1, endpoint.PropertyOpens);
-        var message = Assert.Single(logger.Messages);
+        var message = Assert.Single(logger.Messages, item => item.StartsWith("Audio probe completed."));
         Assert.Contains("Operation=DefaultOutput", message);
         Assert.Contains("ControlsMs=0 IdentityReads=1", message);
         Assert.Contains(message, LogPrivacyFilter.FilterForExport($"{DateTimeOffset.UtcNow:O} [Information] {message}"));
@@ -78,7 +78,7 @@ public sealed class WindowsAudioProbeTests
         Assert.Equal(0, disconnected.PropertyOpens);
         Assert.Equal(0, foreign.NameReads);
         Assert.Equal(0, disconnected.Activations + foreign.Activations);
-        var message = Assert.Single(logger.Messages);
+        var message = Assert.Single(logger.Messages, item => item.StartsWith("Audio probe completed."));
         Assert.Contains("IdentityReads=1 Outcome=NoEndpoint", message);
     }
 
@@ -109,6 +109,85 @@ public sealed class WindowsAudioProbeTests
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.IsCurrentOutputAsync(Speaker, cancellation.Token).AsTask());
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.GetSnapshotAsync(Speaker, cancellation.Token).AsTask());
+    }
+
+    [Fact]
+    public async Task DecisionsDistinguishForeignContainerHandsFreeAndMissingNameWithoutExposingIdentity()
+    {
+        var foreign = new FakeEndpoint("private-foreign-endpoint", "private friendly name", Guid.NewGuid());
+        var handsFree = new FakeEndpoint("private-speaker-endpoint", "Xiaomi蓝牙音箱Pro Hands-Free", SpeakerContainer);
+        var unnamed = new FakeEndpoint("private-unnamed-endpoint", "", null);
+        var logger = new MemoryLogger();
+        var controller = new WindowsAudioEndpointController(() => new FakeEnumerator(foreign, [foreign, handsFree, unnamed]), logger);
+        await controller.GetSnapshotAsync(Speaker);
+        Assert.Contains(logger.Messages, message => message.Contains("Reason=ContainerMismatch"));
+        Assert.Contains(logger.Messages, message => message.Contains("Reason=HandsFree"));
+        Assert.Contains(logger.Messages, message => message.Contains("Reason=NameMissing"));
+        Assert.Equal(0, foreign.NameReads);
+        Assert.Equal(0, foreign.Activations + handsFree.Activations + unnamed.Activations);
+        foreach (var message in logger.Messages)
+        {
+            Assert.DoesNotContain("private", message);
+            Assert.DoesNotContain(SpeakerContainer.ToString(), message);
+            Assert.Contains(message, LogPrivacyFilter.FilterForExport($"{DateTimeOffset.UtcNow:O} [Information] {message}"));
+        }
+    }
+
+    [Fact]
+    public void DecisionAliasesPersistAcrossStateAndContainerChangesAndSuppressUnchangedSamples()
+    {
+        var logger = new MemoryLogger();
+        var controller = new WindowsAudioEndpointController(() => throw new InvalidOperationException(), logger);
+        var foreign = Guid.NewGuid();
+        controller.RecordEndpointDecision("private-id", AudioDeviceState.Active, SpeakerContainer, foreign, "ContainerMismatch", false);
+        controller.RecordEndpointDecision("private-id", AudioDeviceState.Active, SpeakerContainer, foreign, "ContainerMismatch", false);
+        Assert.Single(logger.Messages);
+        controller.RecordEndpointDecision("private-id", AudioDeviceState.Active, SpeakerContainer, SpeakerContainer, "Selected", true);
+        Assert.Equal(2, logger.Messages.Count);
+        Assert.All(logger.Messages, message => Assert.Contains("Endpoint=1", message));
+        Assert.Contains("ExpectedContainer=1 ActualContainer=2", logger.Messages[0]);
+        Assert.Contains("ExpectedContainer=1 ActualContainer=1", logger.Messages[1]);
+    }
+
+    [Fact]
+    public void StartupInventoryReadsStatesWithoutPropertiesOrVolume()
+    {
+        var offline = new FakeEndpoint("private-offline", "private name", SpeakerContainer) { State = AudioDeviceState.Unplugged };
+        var active = new FakeEndpoint("private-active", "private other", Guid.NewGuid());
+        var removed = new FakeEndpoint("private-removed", "private name", null)
+            { StateResult = unchecked((int)0x80070490) };
+        var enumerator = new FakeEnumerator(active, [offline, removed, active]);
+        var logger = new MemoryLogger();
+        var controller = new WindowsAudioEndpointController(() => enumerator, logger);
+        controller.LogInitialEndpointStates();
+        Assert.Equal(AudioDeviceState.All, enumerator.RequestedStates);
+        Assert.Equal(0, offline.PropertyOpens + active.PropertyOpens + offline.Activations + active.Activations);
+        Assert.Contains(logger.Messages, item => item.Contains("Kind=InitialRender State=8"));
+        Assert.Contains(logger.Messages, item => item.Contains("Kind=InitialRender State=1"));
+        Assert.Contains("Audio endpoint inventory item unavailable.", logger.Messages);
+        Assert.All(logger.Messages, message => Assert.Contains(message,
+            LogPrivacyFilter.FilterForExport($"{DateTimeOffset.UtcNow:O} [Information] {message}")));
+    }
+
+    [Fact]
+    public async Task NotificationsRecordInactiveAndUnmatchedEndpointsBeforeActivationLookup()
+    {
+        var observed = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var callback = new WindowsAudioEndpointController.PlaybackEndpointCallback(
+            (id, at) => { observed.Enqueue("lookup"); completion.TrySetResult(); },
+            (role, id, at) => { },
+            (id, kind, state, at) => observed.Enqueue($"{kind}:{state}"));
+        callback.OnDeviceStateChanged("private-id", (uint)AudioDeviceState.Active);
+        await completion.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(new[] { "State:1", "lookup" }, observed.ToArray());
+        var inactive = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var inactiveCallback = new WindowsAudioEndpointController.PlaybackEndpointCallback(
+            (id, at) => throw new InvalidOperationException("Inactive must not run activation lookup"),
+            (role, id, at) => { },
+            (id, kind, state, at) => inactive.TrySetResult($"{kind}:{state}"));
+        inactiveCallback.OnDeviceStateChanged("private-id", (uint)AudioDeviceState.Unplugged);
+        Assert.Equal("State:8", await inactive.Task.WaitAsync(TimeSpan.FromSeconds(5)));
     }
 
     private sealed class MemoryLogger : IAppLogger
@@ -157,6 +236,7 @@ public sealed class WindowsAudioProbeTests
     {
         public string Id => id;
         public AudioDeviceState State { get; init; } = AudioDeviceState.Active;
+        public int StateResult { get; init; }
         public int PropertyOpens { get; private set; }
         public int NameReads { get; private set; }
         public int Activations { get; private set; }
@@ -172,7 +252,7 @@ public sealed class WindowsAudioProbeTests
             return 0;
         }
         public int GetId(out string endpointId) { endpointId = id; return 0; }
-        public int GetState(out AudioDeviceState state) { state = State; return 0; }
+        public int GetState(out AudioDeviceState state) { state = State; return StateResult; }
         public int GetValue(ref PropertyKey key, out PropVariant value)
         {
             value = default;
