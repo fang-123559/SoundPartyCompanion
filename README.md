@@ -2,7 +2,7 @@
 
 非官方、仅本地运行的 Windows 11 x64 桌面音箱伴侣。适用设备：`Xiaomi蓝牙音箱Pro`；设计参考 `MDZ-39-DB / Xiaomi Sound Party`。
 
-**推荐下载 v0.1.3** · [Windows x64 安装包](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.3/SoundPartyCompanion-Setup-0.1.3-win-x64.exe) · [SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.3/SoundPartyCompanion-Setup-0.1.3-win-x64.exe.sha256) · [发布说明](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.3)
+**推荐下载 v0.1.3** · [Windows x64 安装包](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.3/SoundPartyCompanion-Setup-0.1.3-win-x64.exe) · [夸克网盘 ZIP](https://pan.quark.cn/s/b9c13da5d6ff) · [SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.3/SoundPartyCompanion-Setup-0.1.3-win-x64.exe.sha256) · [发布说明](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.3)
 
 `v0.1.3` 使用 .NET 10 LTS，安装包自带运行库。功能包括蓝牙连接状态、音量与静音、播放器支持的媒体控制、Windows 系统电量和原位设置面板。安装包未签名，Windows 可能显示 SmartScreen 提示。
 
@@ -17,7 +17,7 @@
 
 豆包对话和豆包工作是已实测的示例，可查看[导入说明及实测反馈](https://github.com/fang-123559/Sound-Party-Companion-AI-Agent-download#豆包工作)。
 
-也可从[夸克网盘下载 v0.1.1 安装包](https://pan.quark.cn/s/70506127e681)。请使用 GitHub 发布页的[同版 SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.1/SoundPartyCompanion-Setup-0.1.1-win-x64.exe.sha256)核对。
+从[夸克网盘下载 v0.1.3 正式版 ZIP](https://pan.quark.cn/s/b9c13da5d6ff) 后，完整解压即可看到安装包和使用说明。可以用上方的 SHA256 校验文件核对解压后的安装包。
 
 1. 在 Windows“设置 → 蓝牙和设备”配对音箱，并保持蓝牙开启。
 2. 从上方 GitHub 入口下载 `v0.1.3` 安装包和同版 SHA256 文件，核对文件来源和校验值。[打包报告](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.3/packaging-report-0.1.3.json)记录源码提交及构建环境。
