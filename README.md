@@ -4,6 +4,12 @@
 
 **推荐下载 v0.1.3** · [Windows x64 安装包](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.3/SoundPartyCompanion-Setup-0.1.3-win-x64.exe) · [夸克网盘 ZIP](https://pan.quark.cn/s/b9c13da5d6ff) · [SHA256 校验文件](https://github.com/fang-123559/SoundPartyCompanion/releases/download/v0.1.3/SoundPartyCompanion-Setup-0.1.3-win-x64.exe.sha256) · [发布说明](https://github.com/fang-123559/SoundPartyCompanion/releases/tag/v0.1.3)
 
+### 实机界面
+
+| 紧凑卡片 · 等待音频连接 | 展开面板 · 音量就绪 |
+| --- | --- |
+| <img src="docs/screenshots/widget-compact.png" width="300" alt="小米音箱重连时的紧凑卡片，音量显示为两条短横线"> | <img src="docs/screenshots/widget-expanded.png" width="330" alt="展开面板显示 A2DP 立体声输出，当前音量为 12%"> |
+
 `v0.1.3` 使用 .NET 10 LTS，安装包自带运行库。功能包括蓝牙连接状态、音量与静音、播放器支持的媒体控制、Windows 系统电量和原位设置面板。安装包未签名，Windows 可能显示 SmartScreen 提示。
 
 本版基于已通过实机验收的 Windows 内测版 0.1.2.2，增加音箱重连诊断。若音量长时间显示 `--`，请记下发生时间，从托盘导出诊断包。
